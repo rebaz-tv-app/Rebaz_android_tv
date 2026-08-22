@@ -163,6 +163,9 @@
             height: 70%;
             background: #000000;
             position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         video {
@@ -175,24 +178,25 @@
             position: absolute;
             bottom: 10px;
             right: 15px;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.75);
             padding: 6px 15px;
             border-radius: 6px;
-            font-size: 16px;
+            font-size: 15px;
             color: #ffffff;
             font-weight: bold;
         }
 
-        .live-badge {
+        .live-tag {
             position: absolute;
             top: 10px;
             left: 15px;
-            background: #ef4444;
+            background: #dc2626;
             color: white;
-            padding: 4px 10px;
+            padding: 3px 10px;
             border-radius: 4px;
             font-size: 12px;
             font-weight: bold;
+            letter-spacing: 1px;
         }
 
         .controls-pane {
@@ -255,7 +259,7 @@
         <div class="player-pane">
             <div class="video-container">
                 <video id="videoPlayer" autoplay playsinline></video>
-                <div class="live-badge">LIVE</div>
+                <div class="live-tag">LIVE</div>
                 <div class="channel-title-overlay" id="currentChTitle">4K | Alwan Sport 1</div>
             </div>
 
@@ -284,21 +288,21 @@
             }
         ];
 
-        let hlsPlayer = null;
-        let mpegtsPlayer = null;
+        let playerInstance = null;
         const video = document.getElementById('videoPlayer');
 
         let currentUrl = "";
         let currentName = "";
 
-        function stopPlayers() {
-            if (hlsPlayer) {
-                hlsPlayer.destroy();
-                hlsPlayer = null;
-            }
-            if (mpegtsPlayer) {
-                mpegtsPlayer.destroy();
-                mpegtsPlayer = null;
+        function stopPlayer() {
+            if (playerInstance) {
+                try {
+                    playerInstance.pause();
+                    playerInstance.unload();
+                    playerInstance.detachMediaElement();
+                    playerInstance.destroy();
+                } catch(e) { console.log(e); }
+                playerInstance = null;
             }
         }
 
@@ -328,7 +332,7 @@
         }
 
         function playStream(url, name, element = null) {
-            stopPlayers();
+            stopPlayer();
             currentUrl = url;
             currentName = name;
 
@@ -338,56 +342,44 @@
             }
             document.getElementById('currentChTitle').innerText = name;
 
-            if (url.endsWith('.ts') && mpegts.getFeatureList().mseLivePlayback) {
-                mpegtsPlayer = mpegts.createPlayer({
-                    type: 'm2ts',
+            if (mpegts.isSupported()) {
+                playerInstance = mpegts.createPlayer({
+                    type: 'mse',
                     isLive: true,
                     url: url
                 }, {
                     enableWorker: true,
-                    enableStashBuffer: false,
-                    stashInitialSize: 64,
-                    isLive: true,
                     lazyLoad: false,
-                    liveBufferLatencyChasing: false,
+                    liveBufferLatencyChasing: true,
+                    liveBufferLatencyMaxLatency: 3,
+                    liveBufferLatencyMinRemain: 0.5,
                     autoCleanupSourceBuffer: true
                 });
 
-                mpegtsPlayer.attachMediaElement(video);
-                mpegtsPlayer.load();
-                mpegtsPlayer.play().catch(() => {
+                playerInstance.attachMediaElement(video);
+                playerInstance.load();
+                playerInstance.play().catch(() => {
                     video.muted = true;
                     video.play();
                 });
 
-                mpegtsPlayer.on(mpegts.Events.ERROR, (errorType, errorDetail) => {
-                    console.log("MPEGTS Error:", errorType, errorDetail);
-                    setTimeout(reloadStream, 2000);
-                });
-
-            } else if (url.includes('.m3u8') && Hls.isSupported()) {
-                hlsPlayer = new Hls({
-                    liveSyncDurationCount: 3,
-                    enableWorker: true
-                });
-                hlsPlayer.loadSource(url);
-                hlsPlayer.attachMedia(video);
-                hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
-                    video.play().catch(() => {
-                        video.muted = true;
-                        video.play();
-                    });
+                playerInstance.on(mpegts.Events.ERROR, () => {
+                    setTimeout(reloadStream, 1500);
                 });
             } else {
                 video.src = url;
-                video.play().catch(e => console.log(e));
+                video.play();
             }
         }
 
-        // Jump to live edge if stream freezes
-        video.addEventListener('waiting', () => {
-            if (video.buffered.length > 0) {
-                video.currentTime = video.buffered.end(video.buffered.length - 1);
+        // Auto recover on freeze or ended trigger
+        video.addEventListener('ended', () => {
+            reloadStream();
+        });
+
+        video.addEventListener('pause', () => {
+            if (!video.seeking) {
+                video.play().catch(() => {});
             }
         });
 
