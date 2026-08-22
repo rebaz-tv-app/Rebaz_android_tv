@@ -77,13 +77,14 @@ jobs:
           }
           EOF
 
-          # Create AndroidManifest.xml (Android TV Support)
+          # Create AndroidManifest.xml
           cat << 'EOF' > android_project/app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android"
               package="com.rebazandroid.tv">
 
               <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
               <uses-feature android:name="android.hardware.type.television" android:required="false" />
               <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
@@ -107,7 +108,7 @@ jobs:
           </manifest>
           EOF
 
-          # Create MainActivity.java
+          # Create MainActivity.java with VLC User-Agent Spoofing
           cat << 'EOF' > android_project/app/src/main/java/com/rebazandroid/tv/MainActivity.java
           package com.rebazandroid.tv;
 
@@ -116,6 +117,7 @@ jobs:
           import android.webkit.WebSettings;
           import android.webkit.WebView;
           import android.webkit.WebViewClient;
+          import android.webkit.WebChromeClient;
 
           public class MainActivity extends Activity {
               private WebView webView;
@@ -132,7 +134,14 @@ jobs:
                   webSettings.setMediaPlaybackRequiresUserGesture(false);
                   webSettings.setAllowFileAccessFromFileURLs(true);
                   webSettings.setAllowUniversalAccessFromFileURLs(true);
+                  
+                  // Allow HTTP Streams
+                  webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                  
+                  // Bypass IPTV Panel Blocking by setting User-Agent to VLC
+                  webSettings.setUserAgentString("VLC/3.0.0 LibVLC/3.0.0");
 
+                  webView.setWebChromeClient(new WebChromeClient());
                   webView.setWebViewClient(new WebViewClient());
                   webView.loadUrl("file:///android_asset/index.html");
               }
@@ -157,11 +166,11 @@ jobs:
       - name: Prepare Final APK
         run: |
           mkdir -p output_apk
-          cp android_project/app/build/outputs/apk/debug/app-debug.apk output_apk/rebaz.tv.android.apk
+          cp android_project/app/build/outputs/apk/debug/app-debug.apk output_apk/Rebaz-Android-Tv.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: REBAZ-TV-APK
-          path: output_apk/rebaz.tv.android.apk
+          name: Rebaz-Android-Tv
+          path: output_apk/Rebaz-Android-Tv.apk
           retention-days: 14
