@@ -265,7 +265,7 @@
                     { 
                         num: "149", 
                         name: "4K | Alwan Sport 1", 
-                        url: "http://eaglevnew.top/live/890608893636/957330157995/757045.ts" 
+                        url: "http://eaglevnew.top/live/890608893636/957330157995/757045.m3u8" 
                     }
                 ]
             }
@@ -274,6 +274,22 @@
         let hlsPlayer = null;
         let mpegtsPlayer = null;
         const video = document.getElementById('videoPlayer');
+
+        // Auto Live Edge Recovery
+        video.addEventListener('ended', () => {
+            console.log("Stream ended, reconnecting...");
+            reloadStream();
+        });
+
+        video.addEventListener('stalled', () => {
+            console.log("Stream stalled, trying to recover...");
+            if (video.buffered.length > 0) {
+                video.currentTime = video.buffered.end(video.buffered.length - 1);
+            }
+        });
+
+        let currentUrl = "";
+        let currentName = "";
 
         function stopPlayers() {
             if (hlsPlayer) {
@@ -305,8 +321,16 @@
             }
         }
 
+        function reloadStream() {
+            if (currentUrl) {
+                playStream(currentUrl, currentName);
+            }
+        }
+
         function playStream(url, name, element = null) {
             stopPlayers();
+            currentUrl = url;
+            currentName = name;
 
             if(element) {
                 document.querySelectorAll('.ch-item').forEach(el => el.classList.remove('active'));
@@ -314,46 +338,53 @@
             }
             document.getElementById('currentChTitle').innerText = name;
 
-            if (url.includes('.ts') && mpegts.getFeatureList().mseLivePlayback) {
+            if (url.includes('.m3u8') && Hls.isSupported()) {
+                hlsPlayer = new Hls({
+                    liveSyncDurationCount: 3,
+                    liveMaxLatencyDurationCount: 10,
+                    enableWorker: true
+                });
+                hlsPlayer.loadSource(url);
+                hlsPlayer.attachMedia(video);
+                hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play().catch(() => {
+                        video.muted = true;
+                        video.play();
+                    });
+                });
+
+                hlsPlayer.on(Hls.Events.ERROR, function (event, data) {
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                hlsPlayer.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                hlsPlayer.recoverMediaError();
+                                break;
+                            default:
+                                stopPlayers();
+                                break;
+                        }
+                    }
+                });
+
+            } else if (url.includes('.ts') && mpegts.getFeatureList().mseLivePlayback) {
                 mpegtsPlayer = mpegts.createPlayer({
                     type: 'mse',
                     isLive: true,
                     url: url
                 }, {
-                    enableStashBuffer: false,       // ڕێگری لە پڕبوونی میمۆری کاتی دەکات
-                    stashInitialSize: 128,
+                    enableStashBuffer: false,
                     isLive: true,
                     lazyLoad: false,
-                    liveBufferLatencyChasing: true, // هێشتنەوەی پەخش لەسەر ڕاستەوخۆ (Live)
-                    autoCleanupSourceBuffer: true
+                    liveBufferLatencyChasing: true
                 });
 
                 mpegtsPlayer.attachMediaElement(video);
                 mpegtsPlayer.load();
-                
-                const playPromise = video.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(() => {
-                        video.muted = true;
-                        video.play();
-                    });
-                }
-
-                mpegtsPlayer.on(mpegts.Events.ERROR, (errorType, errorDetail) => {
-                    console.log('Stream Error:', errorType, errorDetail);
-                    setTimeout(() => {
-                        if (mpegtsPlayer) {
-                            mpegtsPlayer.load();
-                            mpegtsPlayer.play();
-                        }
-                    }, 1000);
-                });
-
-            } else if (url.includes('.m3u8') && Hls.isSupported()) {
-                hlsPlayer = new Hls();
-                hlsPlayer.loadSource(url);
-                hlsPlayer.attachMedia(video);
-                hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
+                video.play().catch(() => {
+                    video.muted = true;
                     video.play();
                 });
             } else {
