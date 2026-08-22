@@ -25,19 +25,35 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Generate Gradle Wrapper
-        run: gradle wrapper
-
-      - name: Grant Execute Permission
-        run: chmod +x gradlew
-
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+      - name: Find Project and Build APK
+        run: |
+          # دۆزینەوەی فۆڵدەری سەرەکی پڕۆژەکە
+          BUILD_FILE=$(find . -maxdepth 3 -name "build.gradle*" -not -path "*/app/*" | head -n 1)
+          if [ -z "$BUILD_FILE" ]; then
+            echo "Error: build.gradle not found!"
+            exit 1
+          fi
+          PROJECT_DIR=$(dirname "$BUILD_FILE")
+          echo "Found project in: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
+          
+          # پێدانی دەسەڵات بە gradlew ئەگەر هەبێت
+          if [ -f "./gradlew" ]; then
+            chmod +x gradlew
+            ./gradlew assembleDebug --stacktrace
+          else
+            gradle assembleDebug --stacktrace
+          fi
 
       - name: Prepare APK Output
         run: |
           mkdir -p output_apk
-          cp app/build/outputs/apk/debug/*.apk output_apk/rebaz.tv.android.apk
+          APK_PATH=$(find . -name "*.apk" | head -n 1)
+          if [ -n "$APK_PATH" ]; then
+            cp "$APK_PATH" output_apk/rebaz.tv.android.apk
+          else
+            echo "APK file not generated!" && exit 1
+          fi
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
