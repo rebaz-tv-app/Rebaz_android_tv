@@ -98,7 +98,7 @@ jobs:
           }
           EOF
 
-          # Create styles.xml (Fixes AAPT2 Resource Linking Error)
+          # Create styles.xml
           cat << 'EOF' > android_project/app/src/main/res/values/styles.xml
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
@@ -138,7 +138,7 @@ jobs:
           </manifest>
           EOF
 
-          # Create MainActivity.java
+          # Create MainActivity.java with MPEG-TS Explicit Format Support
           cat << 'EOF' > android_project/app/src/main/java/com/rebazandroid/tv/MainActivity.java
           package com.rebazandroid.tv;
 
@@ -157,6 +157,7 @@ jobs:
           import android.widget.FrameLayout;
 
           import androidx.media3.common.MediaItem;
+          import androidx.media3.common.MimeTypes;
           import androidx.media3.datasource.DefaultHttpDataSource;
           import androidx.media3.exoplayer.ExoPlayer;
           import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
@@ -237,7 +238,20 @@ jobs:
                           @Override
                           public void run() {
                               if (player != null && url != null && !url.isEmpty()) {
-                                  MediaItem mediaItem = MediaItem.fromUri(Uri.parse(url));
+                                  MediaItem mediaItem;
+                                  if (url.toLowerCase().contains(".ts")) {
+                                      mediaItem = new MediaItem.Builder()
+                                              .setUri(Uri.parse(url))
+                                              .setMimeType(MimeTypes.VIDEO_MP2T)
+                                              .build();
+                                  } else if (url.toLowerCase().contains(".m3u8")) {
+                                      mediaItem = new MediaItem.Builder()
+                                              .setUri(Uri.parse(url))
+                                              .setMimeType(MimeTypes.APPLICATION_M3U8)
+                                              .build();
+                                  } else {
+                                      mediaItem = MediaItem.fromUri(Uri.parse(url));
+                                  }
                                   player.setMediaItem(mediaItem);
                                   player.prepare();
                                   player.setPlayWhenReady(true);
