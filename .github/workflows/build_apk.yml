@@ -23,7 +23,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Generate Native Android Project
+      - name: Build Native Android Project
         run: |
           mkdir -p android_project/app/src/main/java/com/rebazandroid/tv
           mkdir -p android_project/app/src/main/assets
@@ -62,11 +62,11 @@ jobs:
           # Create Root build.gradle
           cat << 'EOF' > android_project/build.gradle
           plugins {
-              id 'com.android.application' version '8.2.2' apply false
+              id 'com.android.application' version '8.1.1' apply false
           }
           EOF
 
-          # Create App build.gradle
+          # Create App build.gradle with Java 17 Compatibility
           cat << 'EOF' > android_project/app/build.gradle
           plugins {
               id 'com.android.application'
@@ -85,25 +85,23 @@ jobs:
               }
 
               compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_1_8
-                  targetCompatibility JavaVersion.VERSION_1_8
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
               }
           }
 
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'androidx.core:core:1.12.0'
-              implementation 'androidx.media3:media3-exoplayer:1.2.1'
-              implementation 'androidx.media3:media3-exoplayer-hls:1.2.1'
-              implementation 'androidx.media3:media3-ui:1.2.1'
+              implementation 'androidx.media3:media3-exoplayer:1.2.0'
+              implementation 'androidx.media3:media3-exoplayer-hls:1.2.0'
+              implementation 'androidx.media3:media3-ui:1.2.0'
           }
           EOF
 
           # Create AndroidManifest.xml
           cat << 'EOF' > android_project/app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-              package="com.rebazandroid.tv">
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
               <uses-permission android:name="android.permission.INTERNET" />
               <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -118,7 +116,7 @@ jobs:
                   android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
 
                   <activity
-                      android:name=".MainActivity"
+                      android:name="com.rebazandroid.tv.MainActivity"
                       android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN" />
@@ -264,10 +262,10 @@ jobs:
           }
           EOF
 
-      - name: Build APK via Compatible Gradle Wrapper
+      - name: Setup Gradle Wrapper & Build APK
         run: |
           cd android_project
-          gradle wrapper --gradle-version 8.4
+          gradle wrapper --gradle-version 8.1.1
           ./gradlew assembleDebug --stacktrace
 
       - name: Prepare Final APK
