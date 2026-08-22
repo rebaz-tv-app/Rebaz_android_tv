@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>REBAZ TV</title>
 
-    <!-- HLS Player Library for Live Streams -->
+    <!-- HLS & MPEGTS Player Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
 
     <style>
         * {
@@ -26,7 +27,6 @@
             flex-direction: column;
         }
 
-        /* Top Header Navigation */
         .header {
             height: 60px;
             background: linear-gradient(180deg, #0e1628 0%, #060913 100%);
@@ -88,14 +88,12 @@
             border: 1px solid #0284c7;
         }
 
-        /* Main Container 3 Columns */
         .main-content {
             display: flex;
             flex: 1;
             height: calc(100vh - 60px);
         }
 
-        /* Column 1: Categories */
         .categories-pane {
             width: 22%;
             background: #0b1120;
@@ -122,7 +120,6 @@
             border-right: 4px solid #f59e0b;
         }
 
-        /* Column 2: Channels */
         .channels-pane {
             width: 26%;
             background: #0f172a;
@@ -153,7 +150,6 @@
             width: 30px;
         }
 
-        /* Column 3: Player & Controls */
         .player-pane {
             width: 52%;
             display: flex;
@@ -214,7 +210,6 @@
             outline: none;
         }
 
-        /* Focus Style for Android TV Remote */
         .nav-item:focus, .search-box:focus, .cat-item:focus, .ch-item:focus, .btn:focus {
             outline: 3px solid #f59e0b !important;
             background-color: #1e293b !important;
@@ -225,7 +220,6 @@
 </head>
 <body>
 
-    <!-- Header Section -->
     <div class="header">
         <div class="top-nav">
             <div class="nav-item active" tabindex="0">بث مباشر</div>
@@ -236,31 +230,16 @@
         <div class="app-logo">REBAZ TV</div>
     </div>
 
-    <!-- Main Content 3-Pane -->
     <div class="main-content">
-        
-        <!-- Left: Categories -->
         <div class="categories-pane" id="catPane">
             <div class="cat-item active" tabindex="0" onclick="loadChannels(0)">
                 <span>Alwan Sports</span>
                 <span style="color:#64748b;">22</span>
             </div>
-            <div class="cat-item" tabindex="0" onclick="loadChannels(1)">
-                <span>BEIN SPORTS</span>
-                <span style="color:#64748b;">24</span>
-            </div>
-            <div class="cat-item" tabindex="0" onclick="loadChannels(2)">
-                <span>ARABIC SPORTS</span>
-                <span style="color:#64748b;">42</span>
-            </div>
         </div>
 
-        <!-- Middle: Channels List -->
-        <div class="channels-pane" id="chPane">
-            <!-- Channels dynamically rendered -->
-        </div>
+        <div class="channels-pane" id="chPane"></div>
 
-        <!-- Right: Player & Details -->
         <div class="player-pane">
             <div class="video-container">
                 <video id="videoPlayer" controls autoplay></video>
@@ -276,7 +255,6 @@
                 </div>
             </div>
         </div>
-
     </div>
 
     <script>
@@ -288,37 +266,29 @@
                         num: "149", 
                         name: "4K | Alwan Sport 1", 
                         url: "http://eaglevnew.top/live/890608893636/957330157995/757045.ts" 
-                    },
-                    { num: "150", name: "HD | Alwan Sport 1", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" },
-                    { num: "151", name: "SD | Alwan Sport 1", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" }
-                ]
-            },
-            {
-                name: "BEIN SPORTS",
-                channels: [
-                    { num: "201", name: "beIN SPORTS NEWS", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" }
-                ]
-            },
-            {
-                name: "ARABIC SPORTS",
-                channels: [
-                    { num: "301", name: "KSA SPORT HD", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" }
+                    }
                 ]
             }
         ];
 
-        let hls = new Hls();
+        let hlsPlayer = null;
+        let mpegtsPlayer = null;
         const video = document.getElementById('videoPlayer');
+
+        function stopPlayers() {
+            if (hlsPlayer) {
+                hlsPlayer.destroy();
+                hlsPlayer = null;
+            }
+            if (mpegtsPlayer) {
+                mpegtsPlayer.destroy();
+                mpegtsPlayer = null;
+            }
+        }
 
         function loadChannels(catIndex) {
             const chPane = document.getElementById('chPane');
             chPane.innerHTML = '';
-            
-            const catItems = document.querySelectorAll('.cat-item');
-            catItems.forEach((item, idx) => {
-                if(idx === catIndex) item.classList.add('active');
-                else item.classList.remove('active');
-            });
 
             const channels = categories[catIndex].channels;
             channels.forEach((ch, idx) => {
@@ -336,25 +306,33 @@
         }
 
         function playStream(url, name, element = null) {
+            stopPlayers();
+
             if(element) {
                 document.querySelectorAll('.ch-item').forEach(el => el.classList.remove('active'));
                 element.classList.add('active');
             }
             document.getElementById('currentChTitle').innerText = name;
 
-            if (url.includes('.m3u8') && Hls.isSupported()) {
-                hls.loadSource(url);
-                hls.attachMedia(video);
-                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+            if (url.endsWith('.ts') && mpegts.getFeatureList().mseLivePlayback) {
+                mpegtsPlayer = mpegts.createPlayer({
+                    type: 'mse',
+                    isLive: true,
+                    url: url
+                });
+                mpegtsPlayer.attachMediaElement(video);
+                mpegtsPlayer.load();
+                mpegtsPlayer.play().catch(e => console.log(e));
+            } else if (url.includes('.m3u8') && Hls.isSupported()) {
+                hlsPlayer = new Hls();
+                hlsPlayer.loadSource(url);
+                hlsPlayer.attachMedia(video);
+                hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
                     video.play();
                 });
             } else {
-                if (hls) {
-                    hls.destroy();
-                    hls = new Hls();
-                }
                 video.src = url;
-                video.play().catch(e => console.log("Playback error:", e));
+                video.play().catch(e => console.log(e));
             }
         }
 
