@@ -23,9 +23,6 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Setup Gradle System
-        uses: gradle/actions/setup-gradle@v3
-
       - name: Generate Native Android Project
         run: |
           mkdir -p android_project/app/src/main/java/com/rebazandroid/tv
@@ -44,26 +41,28 @@ jobs:
 
           # Create settings.gradle
           cat << 'EOF' > android_project/settings.gradle
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
           rootProject.name = "REBAZ TV"
           include ':app'
           EOF
 
           # Create Root build.gradle
           cat << 'EOF' > android_project/build.gradle
-          buildscript {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-              dependencies {
-                  classpath 'com.android.tools.build:gradle:8.1.4'
-              }
-          }
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
+          plugins {
+              id 'com.android.application' version '8.2.2' apply false
           }
           EOF
 
@@ -92,6 +91,8 @@ jobs:
           }
 
           dependencies {
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'androidx.core:core:1.12.0'
               implementation 'androidx.media3:media3-exoplayer:1.2.1'
               implementation 'androidx.media3:media3-exoplayer-hls:1.2.1'
               implementation 'androidx.media3:media3-ui:1.2.1'
@@ -101,7 +102,7 @@ jobs:
           # Create AndroidManifest.xml
           cat << 'EOF' > android_project/app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/manifest/android"
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
               package="com.rebazandroid.tv">
 
               <uses-permission android:name="android.permission.INTERNET" />
@@ -245,6 +246,14 @@ jobs:
               }
 
               @Override
+              protected void onStop() {
+                  super.onStop();
+                  if (player != null) {
+                      player.pause();
+                  }
+              }
+
+              @Override
               public void onBackPressed() {
                   if (webView.canGoBack()) {
                       webView.goBack();
@@ -255,14 +264,11 @@ jobs:
           }
           EOF
 
-      - name: Accept Android SDK Licenses
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-
-      - name: Build APK via Gradle
+      - name: Build APK via Compatible Gradle Wrapper
         run: |
           cd android_project
-          gradle assembleDebug --stacktrace
+          gradle wrapper --gradle-version 8.4
+          ./gradlew assembleDebug --stacktrace
 
       - name: Prepare Final APK
         run: |
