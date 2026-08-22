@@ -5,10 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>REBAZ TV</title>
 
-    <!-- HLS & MPEGTS Player Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
-
     <style>
         * {
             box-sizing: border-box;
@@ -186,17 +182,16 @@
             font-weight: bold;
         }
 
-        .live-tag {
+        .live-badge {
             position: absolute;
             top: 10px;
             left: 15px;
-            background: #dc2626;
+            background: #ef4444;
             color: white;
-            padding: 3px 10px;
+            padding: 4px 10px;
             border-radius: 4px;
             font-size: 12px;
             font-weight: bold;
-            letter-spacing: 1px;
         }
 
         .controls-pane {
@@ -259,7 +254,7 @@
         <div class="player-pane">
             <div class="video-container">
                 <video id="videoPlayer" autoplay playsinline></video>
-                <div class="live-tag">LIVE</div>
+                <div class="live-badge">LIVE</div>
                 <div class="channel-title-overlay" id="currentChTitle">4K | Alwan Sport 1</div>
             </div>
 
@@ -288,23 +283,9 @@
             }
         ];
 
-        let playerInstance = null;
         const video = document.getElementById('videoPlayer');
-
         let currentUrl = "";
         let currentName = "";
-
-        function stopPlayer() {
-            if (playerInstance) {
-                try {
-                    playerInstance.pause();
-                    playerInstance.unload();
-                    playerInstance.detachMediaElement();
-                    playerInstance.destroy();
-                } catch(e) { console.log(e); }
-                playerInstance = null;
-            }
-        }
 
         function loadChannels(catIndex) {
             const chPane = document.getElementById('chPane');
@@ -331,9 +312,8 @@
             }
         }
 
-        function playStream(url, name, element = null) {
-            stopPlayer();
-            currentUrl = url;
+        function playStream(rawUrl, name, element = null) {
+            currentUrl = rawUrl;
             currentName = name;
 
             if(element) {
@@ -342,45 +322,33 @@
             }
             document.getElementById('currentChTitle').innerText = name;
 
-            if (mpegts.isSupported()) {
-                playerInstance = mpegts.createPlayer({
-                    type: 'mse',
-                    isLive: true,
-                    url: url
-                }, {
-                    enableWorker: true,
-                    lazyLoad: false,
-                    liveBufferLatencyChasing: true,
-                    liveBufferLatencyMaxLatency: 3,
-                    liveBufferLatencyMinRemain: 0.5,
-                    autoCleanupSourceBuffer: true
-                });
+            // Automatically convert IPTV .ts stream to .m3u8 for native continuous Android playback
+            let streamUrl = rawUrl;
+            if (streamUrl.endsWith('.ts')) {
+                streamUrl = streamUrl.substring(0, streamUrl.lastIndexOf('.ts')) + '.m3u8';
+            }
 
-                playerInstance.attachMediaElement(video);
-                playerInstance.load();
-                playerInstance.play().catch(() => {
+            video.pause();
+            video.removeAttribute('src');
+            video.load();
+
+            video.src = streamUrl;
+            
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(() => {
                     video.muted = true;
                     video.play();
                 });
-
-                playerInstance.on(mpegts.Events.ERROR, () => {
-                    setTimeout(reloadStream, 1500);
-                });
-            } else {
-                video.src = url;
-                video.play();
             }
         }
 
-        // Auto recover on freeze or ended trigger
-        video.addEventListener('ended', () => {
-            reloadStream();
+        video.addEventListener('error', () => {
+            setTimeout(reloadStream, 2000);
         });
 
-        video.addEventListener('pause', () => {
-            if (!video.seeking) {
-                video.play().catch(() => {});
-            }
+        video.addEventListener('ended', () => {
+            reloadStream();
         });
 
         window.onload = () => {
