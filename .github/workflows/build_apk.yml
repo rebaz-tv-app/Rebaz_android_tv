@@ -57,7 +57,7 @@ jobs:
           }
           EOF
 
-          # Create App build.gradle
+          # Create App build.gradle with Media3 ExoPlayer
           cat << 'EOF' > android_project/app/build.gradle
           plugins {
               id 'com.android.application'
@@ -74,6 +74,12 @@ jobs:
                   versionCode 1
                   versionName "1.0"
               }
+          }
+
+          dependencies {
+              implementation 'androidx.media3:media3-exoplayer:1.3.1'
+              implementation 'androidx.media3:media3-exoplayer-hls:1.3.1'
+              implementation 'androidx.media3:media3-ui:1.3.1'
           }
           EOF
 
@@ -108,42 +114,119 @@ jobs:
           </manifest>
           EOF
 
-          # Create MainActivity.java with VLC User-Agent Spoofing
+          # Create MainActivity.java with Native ExoPlayer Bridge
           cat << 'EOF' > android_project/app/src/main/java/com/rebazandroid/tv/MainActivity.java
           package com.rebazandroid.tv;
 
           import android.app.Activity;
+          import android.graphics.Color;
+          import android.net.Uri;
           import android.os.Bundle;
+          import android.os.Handler;
+          import android.os.Looper;
+          import android.util.DisplayMetrics;
+          import android.view.View;
+          import android.webkit.JavascriptInterface;
           import android.webkit.WebSettings;
           import android.webkit.WebView;
           import android.webkit.WebViewClient;
-          import android.webkit.WebChromeClient;
+          import android.widget.FrameLayout;
+
+          import androidx.media3.common.MediaItem;
+          import androidx.media3.datasource.DefaultHttpDataSource;
+          import androidx.media3.exoplayer.ExoPlayer;
+          import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
+          import androidx.media3.ui.PlayerView;
 
           public class MainActivity extends Activity {
               private WebView webView;
+              private ExoPlayer player;
+              private PlayerView playerView;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
+
+                  FrameLayout rootLayout = new FrameLayout(this);
+                  rootLayout.setBackgroundColor(Color.parseColor("#060913"));
+
+                  DisplayMetrics metrics = new DisplayMetrics();
+                  getWindowManager().getDefaultDisplay().getMetrics(metrics);
+                  int screenWidth = metrics.widthPixels;
+                  int screenHeight = metrics.heightPixels;
+
+                  float density = metrics.density;
+                  int headerHeight = (int) (60 * density);
+                  int availableHeight = screenHeight - headerHeight;
+
+                  int playerWidth = (int) (screenWidth * 0.52);
+                  int playerHeight = (int) (availableHeight * 0.70);
+
+                  DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory()
+                          .setUserAgent("VLC/3.0.0 LibVLC/3.0.0")
+                          .setAllowCrossProtocolRedirects(true);
+
+                  player = new ExoPlayer.Builder(this)
+                          .setMediaSourceFactory(new DefaultMediaSourceFactory(dataSourceFactory))
+                          .build();
+
+                  playerView = new PlayerView(this);
+                  playerView.setPlayer(player);
+                  playerView.setUseController(false);
+
+                  FrameLayout.LayoutParams playerParams = new FrameLayout.LayoutParams(playerWidth, playerHeight);
+                  playerParams.topMargin = headerHeight;
+                  playerParams.leftMargin = 0;
+                  playerView.setLayoutParams(playerParams);
+
                   webView = new WebView(this);
-                  setContentView(webView);
+                  webView.setBackgroundColor(Color.TRANSPARENT);
+                  webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
                   WebSettings webSettings = webView.getSettings();
                   webSettings.setJavaScriptEnabled(true);
                   webSettings.setDomStorageEnabled(true);
-                  webSettings.setMediaPlaybackRequiresUserGesture(false);
+                  webSettings.setAllowFileAccess(true);
                   webSettings.setAllowFileAccessFromFileURLs(true);
                   webSettings.setAllowUniversalAccessFromFileURLs(true);
-                  
-                  // Allow HTTP Streams
                   webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-                  
-                  // Bypass IPTV Panel Blocking by setting User-Agent to VLC
                   webSettings.setUserAgentString("VLC/3.0.0 LibVLC/3.0.0");
 
-                  webView.setWebChromeClient(new WebChromeClient());
+                  webView.addJavascriptInterface(new WebAppInterface(), "Android");
                   webView.setWebViewClient(new WebViewClient());
+
+                  rootLayout.addView(playerView);
+                  rootLayout.addView(webView);
+
+                  setContentView(rootLayout);
+
                   webView.loadUrl("file:///android_asset/index.html");
+              }
+
+              public class WebAppInterface {
+                  @JavascriptInterface
+                  public void playStream(final String url) {
+                      new Handler(Looper.getMainLooper()).post(new Runnable() {
+                          @Override
+                          public void run() {
+                              if (player != null && url != null && !url.isEmpty()) {
+                                  MediaItem mediaItem = MediaItem.fromUri(Uri.parse(url));
+                                  player.setMediaItem(mediaItem);
+                                  player.prepare();
+                                  player.setPlayWhenReady(true);
+                              }
+                          }
+                      });
+                  }
+              }
+
+              @Override
+              protected void onDestroy() {
+                  super.onDestroy();
+                  if (player != null) {
+                      player.release();
+                      player = null;
+                  }
               }
 
               @Override
