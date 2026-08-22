@@ -280,12 +280,15 @@
     </div>
 
     <script>
-        // Sample Channel Data (مۆڵەتی گووڕینی زانیاری و لینکەکانت هەیە)
         const categories = [
             {
                 name: "Alwan Sports",
                 channels: [
-                    { num: "149", name: "4K | Alwan Sport 1", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" },
+                    { 
+                        num: "149", 
+                        name: "4K | Alwan Sport 1", 
+                        url: "http://eaglevnew.top/live/890608893636/957330157995/757045.ts" 
+                    },
                     { num: "150", name: "HD | Alwan Sport 1", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" },
                     { num: "151", name: "SD | Alwan Sport 1", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" }
                 ]
@@ -311,7 +314,6 @@
             const chPane = document.getElementById('chPane');
             chPane.innerHTML = '';
             
-            // Highlight category
             const catItems = document.querySelectorAll('.cat-item');
             catItems.forEach((item, idx) => {
                 if(idx === catIndex) item.classList.add('active');
@@ -340,23 +342,25 @@
             }
             document.getElementById('currentChTitle').innerText = name;
 
-            if (Hls.isSupported()) {
+            if (url.includes('.m3u8') && Hls.isSupported()) {
                 hls.loadSource(url);
                 hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, function() {
                     video.play();
                 });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            } else {
+                if (hls) {
+                    hls.destroy();
+                    hls = new Hls();
+                }
                 video.src = url;
-                video.play();
+                video.play().catch(e => console.log("Playback error:", e));
             }
         }
 
-        // Initialize First Category
         window.onload = () => {
             loadChannels(0);
         };
     </script>
 </body>
 </html>
-
