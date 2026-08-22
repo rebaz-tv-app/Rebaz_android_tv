@@ -1,1 +1,45 @@
+name: Build REBAZ TV - Android TV APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch: # دەتوانیت بە دەست لە سەر وێبسایتی GitHub پڕۆسەی Build دەستپێبکەیت
+
+jobs:
+  build:
+    name: Build REBAZ TV (com.rebazandroid.tv)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup & Cache Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Grant Execute Permission for Gradlew
+        run: chmod +x gradlew
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Prepare APK Output
+        run: |
+          mkdir -p output_apk
+          cp app/build/outputs/apk/debug/*.apk output_apk/rebaz.tv.android.apk
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: REBAZ-TV-APK
+          path: output_apk/rebaz.tv.android.apk
+          retention-days: 14
 
