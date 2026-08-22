@@ -1,1 +1,362 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REBAZ TV</title>
+
+    <!-- HLS Player Library for Live Streams -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background-color: #060913;
+            color: #ffffff;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Header Navigation */
+        .header {
+            height: 60px;
+            background: linear-gradient(180deg, #0e1628 0%, #060913 100%);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 25px;
+            border-bottom: 1px solid #1e293b;
+        }
+
+        .top-nav {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .nav-item {
+            color: #94a3b8;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 6px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .nav-item.active {
+            color: #f59e0b;
+            border-bottom: 2px solid #f59e0b;
+        }
+
+        .search-box {
+            background: #111827;
+            border: 1px solid #374151;
+            border-radius: 20px;
+            padding: 5px 20px;
+            width: 300px;
+            display: flex;
+            align-items: center;
+            outline: none;
+        }
+
+        .search-box input {
+            background: transparent;
+            border: none;
+            color: white;
+            outline: none;
+            width: 100%;
+            text-align: center;
+        }
+
+        .app-logo {
+            font-weight: bold;
+            color: #38bdf8;
+            font-size: 18px;
+            background: #0f172a;
+            padding: 5px 12px;
+            border-radius: 8px;
+            border: 1px solid #0284c7;
+        }
+
+        /* Main Container 3 Columns */
+        .main-content {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 60px);
+        }
+
+        /* Column 1: Categories */
+        .categories-pane {
+            width: 22%;
+            background: #0b1120;
+            border-left: 1px solid #1e293b;
+            overflow-y: auto;
+            padding: 10px 0;
+        }
+
+        .cat-item {
+            padding: 14px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #cbd5e1;
+            font-size: 15px;
+            cursor: pointer;
+            outline: none;
+            border-right: 4px solid transparent;
+        }
+
+        .cat-item.active {
+            background: #1e293b;
+            color: #f59e0b;
+            border-right: 4px solid #f59e0b;
+        }
+
+        /* Column 2: Channels */
+        .channels-pane {
+            width: 26%;
+            background: #0f172a;
+            border-left: 1px solid #1e293b;
+            overflow-y: auto;
+            padding: 10px 0;
+        }
+
+        .ch-item {
+            padding: 12px 15px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #e2e8f0;
+            font-size: 14px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .ch-item.active {
+            background: #1e293b;
+            color: #38bdf8;
+        }
+
+        .ch-num {
+            color: #64748b;
+            font-size: 13px;
+            width: 30px;
+        }
+
+        /* Column 3: Player & Controls */
+        .player-pane {
+            width: 52%;
+            display: flex;
+            flex-direction: column;
+            background: #030712;
+            position: relative;
+        }
+
+        .video-container {
+            width: 100%;
+            height: 70%;
+            background: #000000;
+            position: relative;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .channel-title-overlay {
+            position: absolute;
+            bottom: 10px;
+            right: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 6px 15px;
+            border-radius: 6px;
+            font-size: 16px;
+            color: #ffffff;
+            font-weight: bold;
+        }
+
+        .controls-pane {
+            height: 30%;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background: linear-gradient(180deg, #0b1120 0%, #030712 100%);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            background: #0284c7;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            outline: none;
+        }
+
+        /* Focus Style for Android TV Remote */
+        .nav-item:focus, .search-box:focus, .cat-item:focus, .ch-item:focus, .btn:focus {
+            outline: 3px solid #f59e0b !important;
+            background-color: #1e293b !important;
+            transform: scale(1.02);
+            transition: all 0.1s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Section -->
+    <div class="header">
+        <div class="top-nav">
+            <div class="nav-item active" tabindex="0">بث مباشر</div>
+        </div>
+        <div class="search-box" tabindex="0">
+            <input type="text" placeholder="بحث عن قناة..." readonly>
+        </div>
+        <div class="app-logo">REBAZ TV</div>
+    </div>
+
+    <!-- Main Content 3-Pane -->
+    <div class="main-content">
+        
+        <!-- Left: Categories -->
+        <div class="categories-pane" id="catPane">
+            <div class="cat-item active" tabindex="0" onclick="loadChannels(0)">
+                <span>Alwan Sports</span>
+                <span style="color:#64748b;">22</span>
+            </div>
+            <div class="cat-item" tabindex="0" onclick="loadChannels(1)">
+                <span>BEIN SPORTS</span>
+                <span style="color:#64748b;">24</span>
+            </div>
+            <div class="cat-item" tabindex="0" onclick="loadChannels(2)">
+                <span>ARABIC SPORTS</span>
+                <span style="color:#64748b;">42</span>
+            </div>
+        </div>
+
+        <!-- Middle: Channels List -->
+        <div class="channels-pane" id="chPane">
+            <!-- Channels dynamically rendered -->
+        </div>
+
+        <!-- Right: Player & Details -->
+        <div class="player-pane">
+            <div class="video-container">
+                <video id="videoPlayer" controls autoplay></video>
+                <div class="channel-title-overlay" id="currentChTitle">4K | Alwan Sport 1</div>
+            </div>
+
+            <div class="controls-pane">
+                <div></div>
+                <div class="action-buttons">
+                    <button class="btn" tabindex="0">القبض</button>
+                    <button class="btn" tabindex="0">اضافة الى المفضلة</button>
+                    <button class="btn" tabindex="0">بحث</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Sample Channel Data (مۆڵەتی گووڕینی زانیاری و لینکەکانت هەیە)
+        const categories = [
+            {
+                name: "Alwan Sports",
+                channels: [
+                    { num: "149", name: "4K | Alwan Sport 1", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" },
+                    { num: "150", name: "HD | Alwan Sport 1", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" },
+                    { num: "151", name: "SD | Alwan Sport 1", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" }
+                ]
+            },
+            {
+                name: "BEIN SPORTS",
+                channels: [
+                    { num: "201", name: "beIN SPORTS NEWS", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" }
+                ]
+            },
+            {
+                name: "ARABIC SPORTS",
+                channels: [
+                    { num: "301", name: "KSA SPORT HD", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" }
+                ]
+            }
+        ];
+
+        let hls = new Hls();
+        const video = document.getElementById('videoPlayer');
+
+        function loadChannels(catIndex) {
+            const chPane = document.getElementById('chPane');
+            chPane.innerHTML = '';
+            
+            // Highlight category
+            const catItems = document.querySelectorAll('.cat-item');
+            catItems.forEach((item, idx) => {
+                if(idx === catIndex) item.classList.add('active');
+                else item.classList.remove('active');
+            });
+
+            const channels = categories[catIndex].channels;
+            channels.forEach((ch, idx) => {
+                const div = document.createElement('div');
+                div.className = `ch-item ${idx === 0 ? 'active' : ''}`;
+                div.setAttribute('tabindex', '0');
+                div.innerHTML = `<span class="ch-num">${ch.num}</span> <span>${ch.name}</span>`;
+                div.onclick = () => playStream(ch.url, ch.name, div);
+                chPane.appendChild(div);
+            });
+
+            if(channels.length > 0) {
+                playStream(channels[0].url, channels[0].name);
+            }
+        }
+
+        function playStream(url, name, element = null) {
+            if(element) {
+                document.querySelectorAll('.ch-item').forEach(el => el.classList.remove('active'));
+                element.classList.add('active');
+            }
+            document.getElementById('currentChTitle').innerText = name;
+
+            if (Hls.isSupported()) {
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play();
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+                video.play();
+            }
+        }
+
+        // Initialize First Category
+        window.onload = () => {
+            loadChannels(0);
+        };
+    </script>
+</body>
+</html>
 
