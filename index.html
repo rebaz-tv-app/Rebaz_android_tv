@@ -183,6 +183,18 @@
             font-weight: bold;
         }
 
+        .live-badge {
+            position: absolute;
+            top: 10px;
+            left: 15px;
+            background: #ef4444;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
         .controls-pane {
             height: 30%;
             padding: 20px;
@@ -242,14 +254,15 @@
 
         <div class="player-pane">
             <div class="video-container">
-                <video id="videoPlayer" controls autoplay playsinline></video>
+                <video id="videoPlayer" autoplay playsinline></video>
+                <div class="live-badge">LIVE</div>
                 <div class="channel-title-overlay" id="currentChTitle">4K | Alwan Sport 1</div>
             </div>
 
             <div class="controls-pane">
                 <div></div>
                 <div class="action-buttons">
-                    <button class="btn" tabindex="0">القبض</button>
+                    <button class="btn" tabindex="0" onclick="reloadStream()">تحديث البث</button>
                     <button class="btn" tabindex="0">اضافة الى المفضلة</button>
                     <button class="btn" tabindex="0">بحث</button>
                 </div>
@@ -265,7 +278,7 @@
                     { 
                         num: "149", 
                         name: "4K | Alwan Sport 1", 
-                        url: "http://eaglevnew.top/live/890608893636/957330157995/757045.m3u8" 
+                        url: "http://eaglevnew.top/live/890608893636/957330157995/757045.ts" 
                     }
                 ]
             }
@@ -274,19 +287,6 @@
         let hlsPlayer = null;
         let mpegtsPlayer = null;
         const video = document.getElementById('videoPlayer');
-
-        // Auto Live Edge Recovery
-        video.addEventListener('ended', () => {
-            console.log("Stream ended, reconnecting...");
-            reloadStream();
-        });
-
-        video.addEventListener('stalled', () => {
-            console.log("Stream stalled, trying to recover...");
-            if (video.buffered.length > 0) {
-                video.currentTime = video.buffered.end(video.buffered.length - 1);
-            }
-        });
 
         let currentUrl = "";
         let currentName = "";
@@ -338,10 +338,36 @@
             }
             document.getElementById('currentChTitle').innerText = name;
 
-            if (url.includes('.m3u8') && Hls.isSupported()) {
+            if (url.endsWith('.ts') && mpegts.getFeatureList().mseLivePlayback) {
+                mpegtsPlayer = mpegts.createPlayer({
+                    type: 'm2ts',
+                    isLive: true,
+                    url: url
+                }, {
+                    enableWorker: true,
+                    enableStashBuffer: false,
+                    stashInitialSize: 64,
+                    isLive: true,
+                    lazyLoad: false,
+                    liveBufferLatencyChasing: false,
+                    autoCleanupSourceBuffer: true
+                });
+
+                mpegtsPlayer.attachMediaElement(video);
+                mpegtsPlayer.load();
+                mpegtsPlayer.play().catch(() => {
+                    video.muted = true;
+                    video.play();
+                });
+
+                mpegtsPlayer.on(mpegts.Events.ERROR, (errorType, errorDetail) => {
+                    console.log("MPEGTS Error:", errorType, errorDetail);
+                    setTimeout(reloadStream, 2000);
+                });
+
+            } else if (url.includes('.m3u8') && Hls.isSupported()) {
                 hlsPlayer = new Hls({
                     liveSyncDurationCount: 3,
-                    liveMaxLatencyDurationCount: 10,
                     enableWorker: true
                 });
                 hlsPlayer.loadSource(url);
@@ -352,46 +378,18 @@
                         video.play();
                     });
                 });
-
-                hlsPlayer.on(Hls.Events.ERROR, function (event, data) {
-                    if (data.fatal) {
-                        switch (data.type) {
-                            case Hls.ErrorTypes.NETWORK_ERROR:
-                                hlsPlayer.startLoad();
-                                break;
-                            case Hls.ErrorTypes.MEDIA_ERROR:
-                                hlsPlayer.recoverMediaError();
-                                break;
-                            default:
-                                stopPlayers();
-                                break;
-                        }
-                    }
-                });
-
-            } else if (url.includes('.ts') && mpegts.getFeatureList().mseLivePlayback) {
-                mpegtsPlayer = mpegts.createPlayer({
-                    type: 'mse',
-                    isLive: true,
-                    url: url
-                }, {
-                    enableStashBuffer: false,
-                    isLive: true,
-                    lazyLoad: false,
-                    liveBufferLatencyChasing: true
-                });
-
-                mpegtsPlayer.attachMediaElement(video);
-                mpegtsPlayer.load();
-                video.play().catch(() => {
-                    video.muted = true;
-                    video.play();
-                });
             } else {
                 video.src = url;
                 video.play().catch(e => console.log(e));
             }
         }
+
+        // Jump to live edge if stream freezes
+        video.addEventListener('waiting', () => {
+            if (video.buffered.length > 0) {
+                video.currentTime = video.buffered.end(video.buffered.length - 1);
+            }
+        });
 
         window.onload = () => {
             loadChannels(0);
