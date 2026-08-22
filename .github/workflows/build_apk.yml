@@ -27,6 +27,7 @@ jobs:
         run: |
           mkdir -p android_project/app/src/main/java/com/rebazandroid/tv
           mkdir -p android_project/app/src/main/assets
+          mkdir -p android_project/app/src/main/res/values
 
           # Copy html and web files
           cp index.html android_project/app/src/main/assets/
@@ -35,7 +36,6 @@ jobs:
           # Create gradle.properties
           cat << 'EOF' > android_project/gradle.properties
           android.useAndroidX=true
-          android.enableJetifier=true
           org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
           EOF
 
@@ -62,11 +62,11 @@ jobs:
           # Create Root build.gradle
           cat << 'EOF' > android_project/build.gradle
           plugins {
-              id 'com.android.application' version '8.1.1' apply false
+              id 'com.android.application' version '8.2.2' apply false
           }
           EOF
 
-          # Create App build.gradle with Java 17 Compatibility
+          # Create App build.gradle
           cat << 'EOF' > android_project/app/build.gradle
           plugins {
               id 'com.android.application'
@@ -92,10 +92,20 @@ jobs:
 
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'androidx.media3:media3-exoplayer:1.2.0'
-              implementation 'androidx.media3:media3-exoplayer-hls:1.2.0'
-              implementation 'androidx.media3:media3-ui:1.2.0'
+              implementation 'androidx.media3:media3-exoplayer:1.2.1'
+              implementation 'androidx.media3:media3-exoplayer-hls:1.2.1'
+              implementation 'androidx.media3:media3-ui:1.2.1'
           }
+          EOF
+
+          # Create styles.xml (Fixes AAPT2 Resource Linking Error)
+          cat << 'EOF' > android_project/app/src/main/res/values/styles.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="AppTheme" parent="android:Theme.Material.NoActionBar.Fullscreen">
+                  <item name="android:windowBackground">@android:color/black</item>
+              </style>
+          </resources>
           EOF
 
           # Create AndroidManifest.xml
@@ -113,7 +123,7 @@ jobs:
                   android:label="REBAZ TV"
                   android:supportsRtl="true"
                   android:usesCleartextTraffic="true"
-                  android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+                  android:theme="@style/AppTheme">
 
                   <activity
                       android:name="com.rebazandroid.tv.MainActivity"
@@ -180,8 +190,11 @@ jobs:
                           .setUserAgent("VLC/3.0.0 LibVLC/3.0.0")
                           .setAllowCrossProtocolRedirects(true);
 
+                  DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(this)
+                          .setDataSourceFactory(dataSourceFactory);
+
                   player = new ExoPlayer.Builder(this)
-                          .setMediaSourceFactory(new DefaultMediaSourceFactory(dataSourceFactory))
+                          .setMediaSourceFactory(mediaSourceFactory)
                           .build();
 
                   playerView = new PlayerView(this);
@@ -262,10 +275,10 @@ jobs:
           }
           EOF
 
-      - name: Setup Gradle Wrapper & Build APK
+      - name: Build APK via Gradle
         run: |
           cd android_project
-          gradle wrapper --gradle-version 8.1.1
+          gradle wrapper --gradle-version 8.4
           ./gradlew assembleDebug --stacktrace
 
       - name: Prepare Final APK
