@@ -27,6 +27,7 @@ jobs:
         run: |
           mkdir -p android_project/app/src/main/java/com/rebazandroid/tv
           mkdir -p android_project/app/src/main/assets
+          mkdir -p android_project/app/src/main/res/layout
           mkdir -p android_project/app/src/main/res/values
 
           # Copy html and web files
@@ -138,7 +139,7 @@ jobs:
           </manifest>
           EOF
 
-          # Create MainActivity.java with MPEG-TS Explicit Format Support
+          # Create MainActivity.java
           cat << 'EOF' > android_project/app/src/main/java/com/rebazandroid/tv/MainActivity.java
           package com.rebazandroid.tv;
 
@@ -158,15 +159,20 @@ jobs:
 
           import androidx.media3.common.MediaItem;
           import androidx.media3.common.MimeTypes;
+          import androidx.media3.common.PlaybackException;
+          import androidx.media3.common.Player;
           import androidx.media3.datasource.DefaultHttpDataSource;
           import androidx.media3.exoplayer.ExoPlayer;
           import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
+          import androidx.media3.extractor.DefaultExtractorsFactory;
+          import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory;
           import androidx.media3.ui.PlayerView;
 
           public class MainActivity extends Activity {
               private WebView webView;
               private ExoPlayer player;
               private PlayerView playerView;
+              private String currentUrl = "";
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
@@ -188,10 +194,16 @@ jobs:
                   int playerHeight = (int) (availableHeight * 0.70);
 
                   DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory()
-                          .setUserAgent("VLC/3.0.0 LibVLC/3.0.0")
+                          .setUserAgent("VLC/3.0.18 LibVLC/3.0.18")
+                          .setConnectTimeoutMs(15000)
+                          .setReadTimeoutMs(15000)
                           .setAllowCrossProtocolRedirects(true);
 
-                  DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(this)
+                  DefaultExtractorsFactory extractorsFactory = new DefaultExtractorsFactory()
+                          .setConstantBitrateSeekingEnabled(true)
+                          .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES);
+
+                  DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(this, extractorsFactory)
                           .setDataSourceFactory(dataSourceFactory);
 
                   player = new ExoPlayer.Builder(this)
@@ -201,6 +213,8 @@ jobs:
                   playerView = new PlayerView(this);
                   playerView.setPlayer(player);
                   playerView.setUseController(false);
+                  playerView.setShutterBackgroundColor(Color.TRANSPARENT);
+                  playerView.setKeepContentOnPlayerReset(true);
 
                   FrameLayout.LayoutParams playerParams = new FrameLayout.LayoutParams(playerWidth, playerHeight);
                   playerParams.topMargin = headerHeight;
@@ -218,7 +232,7 @@ jobs:
                   webSettings.setAllowFileAccessFromFileURLs(true);
                   webSettings.setAllowUniversalAccessFromFileURLs(true);
                   webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-                  webSettings.setUserAgentString("VLC/3.0.0 LibVLC/3.0.0");
+                  webSettings.setUserAgentString("VLC/3.0.18 LibVLC/3.0.18");
 
                   webView.addJavascriptInterface(new WebAppInterface(), "Android");
                   webView.setWebViewClient(new WebViewClient());
@@ -228,7 +242,44 @@ jobs:
 
                   setContentView(rootLayout);
 
+                  player.addListener(new Player.Listener() {
+                      @Override
+                      public void onPlayerError(PlaybackException error) {
+                          new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                              @Override
+                              public void run() {
+                                  if (player != null && currentUrl != null && !currentUrl.isEmpty()) {
+                                      playStreamInternal(currentUrl);
+                                  }
+                              }
+                          }, 3000);
+                      }
+                  });
+
                   webView.loadUrl("file:///android_asset/index.html");
+              }
+
+              private void playStreamInternal(String url) {
+                  if (player != null && url != null && !url.isEmpty()) {
+                      currentUrl = url;
+                      MediaItem mediaItem;
+                      if (url.toLowerCase().contains(".ts")) {
+                          mediaItem = new MediaItem.Builder()
+                                  .setUri(Uri.parse(url))
+                                  .setMimeType(MimeTypes.VIDEO_MP2T)
+                                  .build();
+                      } else if (url.toLowerCase().contains(".m3u8")) {
+                          mediaItem = new MediaItem.Builder()
+                                  .setUri(Uri.parse(url))
+                                  .setMimeType(MimeTypes.APPLICATION_M3U8)
+                                  .build();
+                      } else {
+                          mediaItem = MediaItem.fromUri(Uri.parse(url));
+                      }
+                      player.setMediaItem(mediaItem);
+                      player.prepare();
+                      player.setPlayWhenReady(true);
+                  }
               }
 
               public class WebAppInterface {
@@ -237,25 +288,7 @@ jobs:
                       new Handler(Looper.getMainLooper()).post(new Runnable() {
                           @Override
                           public void run() {
-                              if (player != null && url != null && !url.isEmpty()) {
-                                  MediaItem mediaItem;
-                                  if (url.toLowerCase().contains(".ts")) {
-                                      mediaItem = new MediaItem.Builder()
-                                              .setUri(Uri.parse(url))
-                                              .setMimeType(MimeTypes.VIDEO_MP2T)
-                                              .build();
-                                  } else if (url.toLowerCase().contains(".m3u8")) {
-                                      mediaItem = new MediaItem.Builder()
-                                              .setUri(Uri.parse(url))
-                                              .setMimeType(MimeTypes.APPLICATION_M3U8)
-                                              .build();
-                                  } else {
-                                      mediaItem = MediaItem.fromUri(Uri.parse(url));
-                                  }
-                                  player.setMediaItem(mediaItem);
-                                  player.prepare();
-                                  player.setPlayWhenReady(true);
-                              }
+                              playStreamInternal(url);
                           }
                       });
                   }
