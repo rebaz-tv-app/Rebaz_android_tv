@@ -242,7 +242,7 @@
 
         <div class="player-pane">
             <div class="video-container">
-                <video id="videoPlayer" controls autoplay></video>
+                <video id="videoPlayer" controls autoplay playsinline></video>
                 <div class="channel-title-overlay" id="currentChTitle">4K | Alwan Sport 1</div>
             </div>
 
@@ -314,15 +314,41 @@
             }
             document.getElementById('currentChTitle').innerText = name;
 
-            if (url.endsWith('.ts') && mpegts.getFeatureList().mseLivePlayback) {
+            if (url.includes('.ts') && mpegts.getFeatureList().mseLivePlayback) {
                 mpegtsPlayer = mpegts.createPlayer({
                     type: 'mse',
                     isLive: true,
                     url: url
+                }, {
+                    enableStashBuffer: false,       // ڕێگری لە پڕبوونی میمۆری کاتی دەکات
+                    stashInitialSize: 128,
+                    isLive: true,
+                    lazyLoad: false,
+                    liveBufferLatencyChasing: true, // هێشتنەوەی پەخش لەسەر ڕاستەوخۆ (Live)
+                    autoCleanupSourceBuffer: true
                 });
+
                 mpegtsPlayer.attachMediaElement(video);
                 mpegtsPlayer.load();
-                mpegtsPlayer.play().catch(e => console.log(e));
+                
+                const playPromise = video.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(() => {
+                        video.muted = true;
+                        video.play();
+                    });
+                }
+
+                mpegtsPlayer.on(mpegts.Events.ERROR, (errorType, errorDetail) => {
+                    console.log('Stream Error:', errorType, errorDetail);
+                    setTimeout(() => {
+                        if (mpegtsPlayer) {
+                            mpegtsPlayer.load();
+                            mpegtsPlayer.play();
+                        }
+                    }, 1000);
+                });
+
             } else if (url.includes('.m3u8') && Hls.isSupported()) {
                 hlsPlayer = new Hls();
                 hlsPlayer.loadSource(url);
