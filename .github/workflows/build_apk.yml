@@ -1,4 +1,4 @@
-name: Build REBAZ TV APK from HTML
+name: Build REBAZ TV Native APK
 
 on:
   push:
@@ -7,16 +7,12 @@ on:
 
 jobs:
   build:
+    name: Build Native REBAZ TV APK
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -24,32 +20,144 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Install Cordova
-        run: npm install -g cordova
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Create Android Project
+      - name: Generate Native Android Project
         run: |
-          cordova create myapp com.rebazandroid.tv "REBAZ TV"
-          cd myapp
-          rm -rf www/*
-          cp ../index.html www/
-          cp -r ../*.css ../*.js ../*.png www/ 2>/dev/null || true
+          mkdir -p android_project/app/src/main/java/com/rebazandroid/tv
+          mkdir -p android_project/app/src/main/assets
 
-      - name: Add Android Platform
+          # Copy index.html and web files
+          cp index.html android_project/app/src/main/assets/
+          cp -r *.css *.js *.png android_project/app/src/main/assets/ 2>/dev/null || true
+
+          # Create settings.gradle
+          cat << 'EOF' > android_project/settings.gradle
+          rootProject.name = "REBAZ TV"
+          include ':app'
+          EOF
+
+          # Create Root build.gradle
+          cat << 'EOF' > android_project/build.gradle
+          buildscript {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:8.2.2'
+              }
+          }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          EOF
+
+          # Create App build.gradle
+          cat << 'EOF' > android_project/app/build.gradle
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.rebazandroid.tv'
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId "com.rebazandroid.tv"
+                  minSdk 21
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+          }
+          EOF
+
+          # Create AndroidManifest.xml (Android TV Support)
+          cat << 'EOF' > android_project/app/src/main/AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+              package="com.rebazandroid.tv">
+
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-feature android:name="android.hardware.type.television" android:required="false" />
+              <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+              <application
+                  android:allowBackup="true"
+                  android:label="REBAZ TV"
+                  android:supportsRtl="true"
+                  android:usesCleartextTraffic="true"
+                  android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                          <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          # Create MainActivity.java
+          cat << 'EOF' > android_project/app/src/main/java/com/rebazandroid/tv/MainActivity.java
+          package com.rebazandroid.tv;
+
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+
+          public class MainActivity extends Activity {
+              private WebView webView;
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  webView = new WebView(this);
+                  setContentView(webView);
+
+                  WebSettings webSettings = webView.getSettings();
+                  webSettings.setJavaScriptEnabled(true);
+                  webSettings.setDomStorageEnabled(true);
+                  webSettings.setMediaPlaybackRequiresUserGesture(false);
+                  webSettings.setAllowFileAccessFromFileURLs(true);
+                  webSettings.setAllowUniversalAccessFromFileURLs(true);
+
+                  webView.setWebViewClient(new WebViewClient());
+                  webView.loadUrl("file:///android_asset/index.html");
+              }
+
+              @Override
+              public void onBackPressed() {
+                  if (webView.canGoBack()) {
+                      webView.goBack();
+                  } else {
+                      super.onBackPressed();
+                  }
+              }
+          }
+          EOF
+
+      - name: Build APK via Gradle
         run: |
-          cd myapp
-          cordova platform add android@12.0.0
-          sed -i 's/<\/widget>/  <preference name="AndroidTVSupport" value="true" \/>\n<\/widget>/g' config.xml
+          cd android_project
+          gradle wrapper
+          ./gradlew assembleDebug --stacktrace
 
-      - name: Build APK
-        run: |
-          cd myapp
-          cordova build android --debug
-
-      - name: Prepare Output APK
+      - name: Prepare Final APK
         run: |
           mkdir -p output_apk
-          cp myapp/platforms/android/app/build/outputs/apk/debug/app-debug.apk output_apk/rebaz.tv.android.apk
+          cp android_project/app/build/outputs/apk/debug/app-debug.apk output_apk/rebaz.tv.android.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
