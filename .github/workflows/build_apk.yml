@@ -23,6 +23,9 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Setup Gradle System
+        uses: gradle/actions/setup-gradle@v3
+
       - name: Generate Native Android Project
         run: |
           mkdir -p android_project/app/src/main/java/com/rebazandroid/tv
@@ -32,7 +35,7 @@ jobs:
           cp index.html android_project/app/src/main/assets/
           cp -r *.css *.js *.png android_project/app/src/main/assets/ 2>/dev/null || true
 
-          # Create gradle.properties (Fixes AndroidX & Build Issues)
+          # Create gradle.properties
           cat << 'EOF' > android_project/gradle.properties
           android.useAndroidX=true
           android.enableJetifier=true
@@ -64,7 +67,7 @@ jobs:
           }
           EOF
 
-          # Create App build.gradle with Java 8 Compatibility
+          # Create App build.gradle
           cat << 'EOF' > android_project/app/build.gradle
           plugins {
               id 'com.android.application'
@@ -252,11 +255,14 @@ jobs:
           }
           EOF
 
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
       - name: Build APK via Gradle
         run: |
           cd android_project
-          gradle wrapper
-          ./gradlew assembleDebug --stacktrace
+          gradle assembleDebug --stacktrace
 
       - name: Prepare Final APK
         run: |
