@@ -138,7 +138,7 @@ jobs:
           </manifest>
           EOF
 
-          # Create MainActivity.java with Auto-Reconnect & Continuous TS Stream Support
+          # Create MainActivity.java with Stable SurfaceView & Dynamic Native Resizing
           cat << 'EOF' > android_project/app/src/main/java/com/rebazandroid/tv/MainActivity.java
           package com.rebazandroid.tv;
 
@@ -158,16 +158,15 @@ jobs:
           import android.widget.FrameLayout;
 
           import androidx.media3.common.MediaItem;
-          import androidx.media3.common.MimeTypes;
           import androidx.media3.common.PlaybackException;
           import androidx.media3.common.Player;
           import androidx.media3.datasource.DefaultHttpDataSource;
           import androidx.media3.exoplayer.DefaultLoadControl;
           import androidx.media3.exoplayer.ExoPlayer;
-          import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
           import androidx.media3.exoplayer.source.ProgressiveMediaSource;
           import androidx.media3.extractor.DefaultExtractorsFactory;
           import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory;
+          import androidx.media3.ui.AspectRatioFrameLayout;
           import androidx.media3.ui.PlayerView;
 
           import java.util.HashMap;
@@ -180,6 +179,11 @@ jobs:
               private String currentUrl = "";
               private DefaultHttpDataSource.Factory dataSourceFactory;
               private DefaultExtractorsFactory extractorsFactory;
+              private boolean isFullScreen = false;
+
+              private int playerWidth;
+              private int playerHeight;
+              private int headerHeight;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
@@ -197,11 +201,11 @@ jobs:
                   int screenHeight = metrics.heightPixels;
 
                   float density = metrics.density;
-                  int headerHeight = (int) (60 * density);
+                  headerHeight = (int) (60 * density);
                   int availableHeight = screenHeight - headerHeight;
 
-                  int playerWidth = (int) (screenWidth * 0.52);
-                  int playerHeight = (int) (availableHeight * 0.70);
+                  playerWidth = (int) (screenWidth * 0.52);
+                  playerHeight = (int) (availableHeight * 0.70);
 
                   Map<String, String> headers = new HashMap<>();
                   headers.put("Connection", "keep-alive");
@@ -248,6 +252,7 @@ jobs:
                   playerParams.topMargin = headerHeight;
                   playerParams.leftMargin = 0;
                   playerView.setLayoutParams(playerParams);
+                  playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FILL);
 
                   webView = new WebView(this);
                   webView.setBackgroundColor(Color.TRANSPARENT);
@@ -274,7 +279,6 @@ jobs:
                   player.addListener(new Player.Listener() {
                       @Override
                       public void onPlaybackStateChanged(int playbackState) {
-                          // Auto re-connect if live TS stream hits EOF/ended state unexpectedly
                           if (playbackState == Player.STATE_ENDED) {
                               reconnectStream();
                           }
@@ -314,6 +318,31 @@ jobs:
                   }
               }
 
+              private void applyFullScreenState(final boolean full) {
+                  new Handler(Looper.getMainLooper()).post(new Runnable() {
+                      @Override
+                      public void run() {
+                          isFullScreen = full;
+                          FrameLayout.LayoutParams params;
+                          if (isFullScreen) {
+                              params = new FrameLayout.LayoutParams(
+                                      FrameLayout.LayoutParams.MATCH_PARENT,
+                                      FrameLayout.LayoutParams.MATCH_PARENT
+                              );
+                              params.setMargins(0, 0, 0, 0);
+                          } else {
+                              params = new FrameLayout.LayoutParams(playerWidth, playerHeight);
+                              params.gravity = Gravity.TOP | Gravity.LEFT;
+                              params.topMargin = headerHeight;
+                              params.leftMargin = 0;
+                          }
+                          playerView.setLayoutParams(params);
+                          playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FILL);
+                          playerView.requestLayout();
+                      }
+                  });
+              }
+
               public class WebAppInterface {
                   @JavascriptInterface
                   public void playStream(final String url) {
@@ -323,6 +352,11 @@ jobs:
                               playStreamInternal(url);
                           }
                       });
+                  }
+
+                  @JavascriptInterface
+                  public void toggleFullScreen(final boolean full) {
+                      applyFullScreenState(full);
                   }
               }
 
@@ -345,7 +379,10 @@ jobs:
 
               @Override
               public void onBackPressed() {
-                  if (webView.canGoBack()) {
+                  if (isFullScreen) {
+                      applyFullScreenState(false);
+                      webView.evaluateJavascript("if(typeof exitFullScreenJS === 'function') exitFullScreenJS();", null);
+                  } else if (webView.canGoBack()) {
                       webView.goBack();
                   } else {
                       super.onBackPressed();
