@@ -206,9 +206,14 @@
         <div class="search-box">
             <input type="text" placeholder="بحث...">
         </div>
-        <div class="logo">
-            <span>📺</span> REBAZ TV
-        </div>
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #00d2ff;
+        }
     </div>
 
     <!-- Main Content Layout -->
@@ -218,44 +223,16 @@
             <!-- Categories -->
             <div class="categories-col">
                 <div class="cat-item active" tabindex="0">
-                    <span>BEIN SPORTS SD</span>
-                    <span class="cat-count">24</span>
-                </div>
-                <div class="cat-item" tabindex="0">
-                    <span>ARABIC SPORTS</span>
-                    <span class="cat-count">42</span>
-                </div>
-                <div class="cat-item" tabindex="0">
-                    <span>Alwan Sports</span>
-                    <span class="cat-count">22</span>
-                </div>
-                <div class="cat-item" tabindex="0">
-                    <span>StarzPlay الدوري الايطالي</span>
-                    <span class="cat-count">13</span>
-                </div>
-                <div class="cat-item" tabindex="0">
-                    <span>SHAHID الدوري الالماني</span>
-                    <span class="cat-count">10</span>
+                    <span>وەرزشی</span>
+                    <span class="cat-count">1</span>
                 </div>
             </div>
 
             <!-- Channels List -->
             <div class="channels-col">
-                <div class="ch-item active" tabindex="0" onclick="playChannel('https://path/to/stream1.m3u8', '4K | Alwan Sport 1')">
-                    <span class="ch-num">149</span>
-                    <span>4K | Alwan Sport 1</span>
-                </div>
-                <div class="ch-item" tabindex="0" onclick="playChannel('https://path/to/stream2.m3u8', 'HD | Alwan Sport 1')">
-                    <span class="ch-num">150</span>
-                    <span>HD | Alwan Sport 1</span>
-                </div>
-                <div class="ch-item" tabindex="0" onclick="playChannel('https://path/to/stream3.m3u8', 'SD | Alwan Sport 1')">
-                    <span class="ch-num">151</span>
-                    <span>SD | Alwan Sport 1</span>
-                </div>
-                <div class="ch-item" tabindex="0" onclick="playChannel('https://path/to/stream4.m3u8', '4K | Alwan Sport 2')">
-                    <span class="ch-num">152</span>
-                    <span>4K | Alwan Sport 2</span>
+                <div class="ch-item active" tabindex="0" onclick="playChannel('http://mhiptv.com:8080/live/hk030/6985423976/212760.ts', 'Alwan Sport 1 4K')">
+                    <span class="ch-num">1</span>
+                    <span>Alwan Sport 1 4K</span>
                 </div>
             </div>
         </div>
@@ -264,7 +241,7 @@
         <div class="right-side">
             <div class="player-space"></div>
             <div class="info-panel">
-                <div class="ch-title" id="selected-ch">4K | Alwan Sport 1</div>
+                <div class="ch-title" id="selected-ch">Alwan Sport 1 4K</div>
                 <div class="action-btns">
                     <button class="btn btn-fav">إضافة إلى المفضلة</button>
                     <button class="btn" onclick="toggleFull()">شاشەی پڕ (Fullscreen)</button>
@@ -275,6 +252,13 @@
 
     <script>
         let isFull = false;
+
+        // کارپێکردنی ڕاستەوخۆی کەناڵەکە بۆ تێست
+        window.onload = function() {
+            setTimeout(() => {
+                playChannel('http://mhiptv.com:8080/live/hk030/6985423976/212760.ts', 'Alwan Sport 1 4K');
+            }, 1000);
+        };
 
         function playChannel(url, title) {
             document.getElementById('selected-ch').innerText = title;
