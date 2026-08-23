@@ -1,151 +1,273 @@
 <!DOCTYPE html>
-<html lang="ku" dir="rtl">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>REBAZ TV</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
         body {
-            background-color: transparent;
+            background-color: #050811;
             color: #ffffff;
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             overflow: hidden;
             height: 100vh;
             direction: rtl;
         }
-        /* سەرۆکی سەرەوە کە هاوتایە لەگەڵ بەرزی 60 پێکسڵ لە ئەپەکەدا */
+
+        /* Top Navigation Bar */
         .header {
-            height: 60px;
-            background: #0b0f19;
+            height: 48px;
+            background: #080c18;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 20px;
-            border-bottom: 1px solid #1a2238;
+            padding: 0 15px;
+            border-bottom: 1px solid #141e33;
+        }
+        .nav-links {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        .nav-item {
+            font-size: 14px;
+            color: #8fa0c0;
+            cursor: pointer;
+            padding: 5px 8px;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-item.active {
+            color: #e5a93b;
+            font-weight: bold;
+            border-bottom-color: #e5a93b;
+        }
+        .search-box {
+            background: #0d1527;
+            border: 1px solid #1e2c4a;
+            border-radius: 20px;
+            padding: 4px 12px;
+            display: flex;
+            align-items: center;
+            width: 220px;
+        }
+        .search-box input {
+            background: transparent;
+            border: none;
+            color: white;
+            outline: none;
+            width: 100%;
+            font-size: 12px;
+            text-align: right;
         }
         .logo {
-            font-size: 20px;
-            font-weight: bold;
-            color: #00ffcc;
-        }
-        .time {
-            font-size: 16px;
-            color: #8892b0;
-        }
-
-        /* چوارچێوەی سەرەکی */
-        .main-container {
-            display: flex;
-            height: calc(100vh - 60px);
-        }
-
-        /* شوێنی بەتاڵی ڤیدیۆ لە چەپ (52٪) بۆ ئەوەی پلەیەرە ڕەسەنەکە تێیدا دەركەوێت */
-        .player-placeholder {
-            width: 52%;
-            height: 100%;
-            pointer-events: none; /* وا دەکات کلیکەکان ڕاستەوخۆ بچنە سەر پلەیەرەکە */
-            position: relative;
-        }
-
-        /* دوگمەی گەورەکردنی شاشە */
-        .controls-overlay {
-            position: absolute;
-            bottom: 15px;
-            left: 15px;
-            pointer-events: auto;
-        }
-        .btn {
-            background: #00ffcc;
-            color: #060913;
-            border: none;
-            padding: 10px 18px;
-            font-weight: bold;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .btn:focus, .btn:hover {
-            outline: 3px solid #ffffff;
-            background: #ffffff;
-        }
-
-        /* لیستەی کەناڵەکان لە لای ڕاست (48٪) */
-        .sidebar {
-            width: 48%;
-            height: 100%;
-            background: #060913;
-            padding: 20px;
-            overflow-y: auto;
-        }
-        .section-title {
-            font-size: 16px;
-            margin-bottom: 15px;
-            color: #8892b0;
-            font-weight: bold;
-        }
-        .channel-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        .channel-item {
-            background: #111827;
-            padding: 15px;
-            border-radius: 8px;
-            cursor: pointer;
-            border: 2px solid transparent;
-            transition: all 0.2s;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-        }
-        .channel-item:focus, .channel-item:hover {
-            border-color: #00ffcc;
-            background: #1f293d;
-            outline: none;
-        }
-        .channel-name {
+            gap: 8px;
             font-size: 16px;
             font-weight: bold;
+            color: #00d2ff;
+        }
+
+        /* Main Container Layout */
+        .main-layout {
+            display: flex;
+            height: calc(100vh - 48px);
+            width: 100vw;
+        }
+
+        /* Left Side: Categories & Channels (50% width) */
+        .left-side {
+            width: 50%;
+            display: flex;
+            border-left: 1px solid #141e33;
+            background: #070b16;
+        }
+
+        /* Categories Column (45% of left side) */
+        .categories-col {
+            width: 45%;
+            background: #090e1c;
+            border-left: 1px solid #141e33;
+            overflow-y: auto;
+        }
+        .cat-item {
+            padding: 12px 10px;
+            font-size: 13px;
+            color: #a0b2d6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            border-bottom: 1px solid #0d1527;
+        }
+        .cat-item.active, .cat-item:hover, .cat-item:focus {
+            background: #121c33;
+            color: #e5a93b;
+            outline: none;
+        }
+        .cat-count {
+            font-size: 11px;
+            color: #5d7299;
+        }
+
+        /* Channels Column (55% of left side) */
+        .channels-col {
+            width: 55%;
+            background: #070b16;
+            overflow-y: auto;
+        }
+        .ch-item {
+            padding: 10px;
+            font-size: 13px;
+            color: #d8e4fc;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            border-bottom: 1px solid #0d1527;
+        }
+        .ch-item.active, .ch-item:hover, .ch-item:focus {
+            background: #14213d;
+            color: #ffffff;
+            outline: none;
+            border-right: 3px solid #00d2ff;
+        }
+        .ch-num {
+            font-size: 12px;
+            color: #5d7299;
+            width: 28px;
+        }
+
+        /* Right Side: ExoPlayer Placeholder + Info Bar (50% width) */
+        .right-side {
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Transparent Top Area for Native Player overlay */
+        .player-space {
+            height: 62%;
+            background: transparent;
+            pointer-events: none;
+        }
+
+        /* Bottom Info & Control Bar */
+        .info-panel {
+            height: 38%;
+            background: #050811;
+            padding: 12px 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border-top: 1px solid #141e33;
+        }
+        .ch-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+        .action-btns {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .btn {
+            background: #0072ce;
+            color: #ffffff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn:focus, .btn:hover {
+            background: #0099ff;
+            outline: 2px solid #ffffff;
+        }
+        .btn-fav {
+            background: #1a2744;
+            color: #a0b2d6;
         }
     </style>
 </head>
 <body>
 
+    <!-- Header Navigation -->
     <div class="header">
-        <div class="logo">REBAZ TV 📺</div>
-        <div class="time" id="clock">--:--</div>
+        <div class="nav-links">
+            <div class="nav-item">مسكن</div>
+            <div class="nav-item active">بث مباشر</div>
+            <div class="nav-item">افلام</div>
+            <div class="nav-item">مسلسلات</div>
+        </div>
+        <div class="search-box">
+            <input type="text" placeholder="بحث...">
+        </div>
+        <div class="logo">
+            <span>📺</span> REBAZ TV
+        </div>
     </div>
 
-    <div class="main-container">
-        <!-- شوێنی پلەیەر (بەتاڵە بۆ ئەوەی ئەوەی خوارەوەی دیار بێت) -->
-        <div class="player-placeholder">
-            <div class="controls-overlay">
-                <button class="btn" onclick="toggleFull()">شاشەی پڕ (Fullscreen)</button>
+    <!-- Main Content Layout -->
+    <div class="main-layout">
+        <!-- Left Side: Categories & Channels -->
+        <div class="left-side">
+            <!-- Categories -->
+            <div class="categories-col">
+                <div class="cat-item active" tabindex="0">
+                    <span>BEIN SPORTS SD</span>
+                    <span class="cat-count">24</span>
+                </div>
+                <div class="cat-item" tabindex="0">
+                    <span>ARABIC SPORTS</span>
+                    <span class="cat-count">42</span>
+                </div>
+                <div class="cat-item" tabindex="0">
+                    <span>Alwan Sports</span>
+                    <span class="cat-count">22</span>
+                </div>
+                <div class="cat-item" tabindex="0">
+                    <span>StarzPlay الدوري الايطالي</span>
+                    <span class="cat-count">13</span>
+                </div>
+                <div class="cat-item" tabindex="0">
+                    <span>SHAHID الدوري الالماني</span>
+                    <span class="cat-count">10</span>
+                </div>
+            </div>
+
+            <!-- Channels List -->
+            <div class="channels-col">
+                <div class="ch-item active" tabindex="0" onclick="playChannel('https://path/to/stream1.m3u8', '4K | Alwan Sport 1')">
+                    <span class="ch-num">149</span>
+                    <span>4K | Alwan Sport 1</span>
+                </div>
+                <div class="ch-item" tabindex="0" onclick="playChannel('https://path/to/stream2.m3u8', 'HD | Alwan Sport 1')">
+                    <span class="ch-num">150</span>
+                    <span>HD | Alwan Sport 1</span>
+                </div>
+                <div class="ch-item" tabindex="0" onclick="playChannel('https://path/to/stream3.m3u8', 'SD | Alwan Sport 1')">
+                    <span class="ch-num">151</span>
+                    <span>SD | Alwan Sport 1</span>
+                </div>
+                <div class="ch-item" tabindex="0" onclick="playChannel('https://path/to/stream4.m3u8', '4K | Alwan Sport 2')">
+                    <span class="ch-num">152</span>
+                    <span>4K | Alwan Sport 2</span>
+                </div>
             </div>
         </div>
 
-        <!-- لیستەی کەناڵەکان -->
-        <div class="sidebar">
-            <div class="section-title">کەناڵە ئاسمانییەکان</div>
-            <div class="channel-list">
-                <!-- لینکەکان بگۆڕە بە لینکەی ڕاستەقینەی خۆت M3U8 / HLS -->
-                <div class="channel-item" tabindex="0" onclick="playChannel('https://path/to/stream1.m3u8')">
-                    <span class="channel-name">کەناڵی یەکەم (نموونە)</span>
-                    <span>▶</span>
-                </div>
-                <div class="channel-item" tabindex="0" onclick="playChannel('https://path/to/stream2.m3u8')">
-                    <span class="channel-name">کەناڵی دووەم (نموونە)</span>
-                    <span>▶</span>
-                </div>
-                <div class="channel-item" tabindex="0" onclick="playChannel('https://path/to/stream3.m3u8')">
-                    <span class="channel-name">کەناڵی سێیەم (نموونە)</span>
-                    <span>▶</span>
+        <!-- Right Side: Video Player Overlay Space & Bottom Controls -->
+        <div class="right-side">
+            <div class="player-space"></div>
+            <div class="info-panel">
+                <div class="ch-title" id="selected-ch">4K | Alwan Sport 1</div>
+                <div class="action-btns">
+                    <button class="btn btn-fav">إضافة إلى المفضلة</button>
+                    <button class="btn" onclick="toggleFull()">شاشەی پڕ (Fullscreen)</button>
                 </div>
             </div>
         </div>
@@ -154,11 +276,10 @@
     <script>
         let isFull = false;
 
-        function playChannel(url) {
+        function playChannel(url, title) {
+            document.getElementById('selected-ch').innerText = title;
             if (window.Android && typeof window.Android.playStream === 'function') {
                 window.Android.playStream(url);
-            } else {
-                alert('لینکەکە کارا ناکات لە دەرەوەی ئەپ: ' + url);
             }
         }
 
@@ -167,22 +288,11 @@
             if (window.Android && typeof window.Android.toggleFullScreen === 'function') {
                 window.Android.toggleFullScreen(isFull);
             }
-            const btn = document.querySelector('.btn');
-            btn.innerText = isFull ? 'شاشەی ئاسایی' : 'شاشەی پڕ (Fullscreen)';
         }
 
-        // ئەم فەنکشنە بانگ دەکرێت کاتێک لە اندرۆید دوگمەی Back دەکرێت لە شاشەی پڕدا
         function exitFullScreenJS() {
             isFull = false;
-            const btn = document.querySelector('.btn');
-            btn.innerText = 'شاشەی پڕ (Fullscreen)';
         }
-
-        // کاتژمێر
-        setInterval(() => {
-            const now = new Date();
-            document.getElementById('clock').innerText = now.toLocaleTimeString();
-        }, 1000);
     </script>
 </body>
 </html>
