@@ -138,7 +138,7 @@ jobs:
           </manifest>
           EOF
 
-          # Create MainActivity.java with Forced LTR Direction Layout
+          # Create MainActivity.java with Auto-Reconnect & Continuous TS Stream Support
           cat << 'EOF' > android_project/app/src/main/java/com/rebazandroid/tv/MainActivity.java
           package com.rebazandroid.tv;
 
@@ -165,6 +165,7 @@ jobs:
           import androidx.media3.exoplayer.DefaultLoadControl;
           import androidx.media3.exoplayer.ExoPlayer;
           import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
+          import androidx.media3.exoplayer.source.ProgressiveMediaSource;
           import androidx.media3.extractor.DefaultExtractorsFactory;
           import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory;
           import androidx.media3.ui.PlayerView;
@@ -177,12 +178,13 @@ jobs:
               private ExoPlayer player;
               private PlayerView playerView;
               private String currentUrl = "";
+              private DefaultHttpDataSource.Factory dataSourceFactory;
+              private DefaultExtractorsFactory extractorsFactory;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
 
-                  // Force LTR layout direction globally regardless of system language
                   getWindow().getDecorView().setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
 
                   FrameLayout rootLayout = new FrameLayout(this);
@@ -203,16 +205,17 @@ jobs:
 
                   Map<String, String> headers = new HashMap<>();
                   headers.put("Connection", "keep-alive");
-                  headers.put("User-Agent", "VLC/3.0.18 LibVLC/3.0.18");
+                  headers.put("Accept", "*/*");
+                  headers.put("User-Agent", "IPTVSmartersPlayer");
 
-                  DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory()
-                          .setUserAgent("VLC/3.0.18 LibVLC/3.0.18")
-                          .setConnectTimeoutMs(25000)
-                          .setReadTimeoutMs(25000)
+                  dataSourceFactory = new DefaultHttpDataSource.Factory()
+                          .setUserAgent("IPTVSmartersPlayer")
+                          .setConnectTimeoutMs(15000)
+                          .setReadTimeoutMs(15000)
                           .setDefaultRequestProperties(headers)
                           .setAllowCrossProtocolRedirects(true);
 
-                  DefaultExtractorsFactory extractorsFactory = new DefaultExtractorsFactory()
+                  extractorsFactory = new DefaultExtractorsFactory()
                           .setConstantBitrateSeekingEnabled(true)
                           .setTsExtractorFlags(
                                   DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES |
@@ -221,19 +224,15 @@ jobs:
 
                   DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
                           .setBufferDurationsMs(
-                                  2000,
-                                  60000,
-                                  1500,
-                                  2000
+                                  500,
+                                  30000,
+                                  500,
+                                  500
                           )
                           .setPrioritizeTimeOverSizeThresholds(true)
                           .build();
 
-                  DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(this, extractorsFactory)
-                          .setDataSourceFactory(dataSourceFactory);
-
                   player = new ExoPlayer.Builder(this)
-                          .setMediaSourceFactory(mediaSourceFactory)
                           .setLoadControl(loadControl)
                           .build();
 
@@ -262,7 +261,7 @@ jobs:
                   webSettings.setAllowFileAccessFromFileURLs(true);
                   webSettings.setAllowUniversalAccessFromFileURLs(true);
                   webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-                  webSettings.setUserAgentString("VLC/3.0.18 LibVLC/3.0.18");
+                  webSettings.setUserAgentString("IPTVSmartersPlayer");
 
                   webView.addJavascriptInterface(new WebAppInterface(), "Android");
                   webView.setWebViewClient(new WebViewClient());
@@ -274,39 +273,42 @@ jobs:
 
                   player.addListener(new Player.Listener() {
                       @Override
+                      public void onPlaybackStateChanged(int playbackState) {
+                          // Auto re-connect if live TS stream hits EOF/ended state unexpectedly
+                          if (playbackState == Player.STATE_ENDED) {
+                              reconnectStream();
+                          }
+                      }
+
+                      @Override
                       public void onPlayerError(PlaybackException error) {
-                          new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-                              @Override
-                              public void run() {
-                                  if (player != null && currentUrl != null && !currentUrl.isEmpty()) {
-                                      playStreamInternal(currentUrl);
-                                  }
-                              }
-                          }, 1500);
+                          reconnectStream();
                       }
                   });
 
                   webView.loadUrl("file:///android_asset/index.html");
               }
 
+              private void reconnectStream() {
+                  new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                      @Override
+                      public void run() {
+                          if (player != null && currentUrl != null && !currentUrl.isEmpty()) {
+                              playStreamInternal(currentUrl);
+                          }
+                      }
+                  }, 300);
+              }
+
               private void playStreamInternal(String url) {
                   if (player != null && url != null && !url.isEmpty()) {
                       currentUrl = url;
-                      MediaItem mediaItem;
-                      if (url.toLowerCase().contains(".ts")) {
-                          mediaItem = new MediaItem.Builder()
-                                  .setUri(Uri.parse(url))
-                                  .setMimeType(MimeTypes.VIDEO_MP2T)
-                                  .build();
-                      } else if (url.toLowerCase().contains(".m3u8")) {
-                          mediaItem = new MediaItem.Builder()
-                                  .setUri(Uri.parse(url))
-                                  .setMimeType(MimeTypes.APPLICATION_M3U8)
-                                  .build();
-                      } else {
-                          mediaItem = MediaItem.fromUri(Uri.parse(url));
-                      }
-                      player.setMediaItem(mediaItem);
+                      ProgressiveMediaSource mediaSource = new ProgressiveMediaSource.Factory(
+                              dataSourceFactory,
+                              extractorsFactory
+                      ).createMediaSource(MediaItem.fromUri(Uri.parse(url)));
+
+                      player.setMediaSource(mediaSource);
                       player.prepare();
                       player.setPlayWhenReady(true);
                   }
