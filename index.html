@@ -141,67 +141,34 @@
 
         .video-container {
             width: 100%;
-            height: 70%;
+            height: 85%;
             background: transparent;
             position: relative;
             cursor: pointer;
         }
 
-        .channel-title-overlay {
-            position: absolute;
-            bottom: 10px;
-            right: 15px;
-            background: rgba(0, 0, 0, 0.75);
-            padding: 6px 15px;
-            border-radius: 6px;
+        .info-pane {
+            height: 15%;
+            background: linear-gradient(180deg, #0b1120 0%, #030712 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 20px;
+            border-top: 1px solid #1e293b;
+        }
+
+        .channel-title-text {
             font-size: 15px;
             color: #ffffff;
             font-weight: bold;
+            text-align: center;
         }
 
-        .live-badge {
-            position: absolute;
-            top: 10px;
-            left: 15px;
-            background: #ef4444;
-            color: white;
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        .controls-pane {
-            height: 30%;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            background: linear-gradient(180deg, #0b1120 0%, #030712 100%);
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 15px;
-            justify-content: flex-end;
-        }
-
-        .btn {
-            background: #0284c7;
-            color: white;
-            border: none;
-            padding: 10px 25px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            outline: none;
-        }
-
+        /* Fullscreen mode: Hides everything except the video container */
         body.fullscreen-mode .header,
         body.fullscreen-mode .categories-pane,
         body.fullscreen-mode .channels-pane,
-        body.fullscreen-mode .controls-pane {
+        body.fullscreen-mode .info-pane {
             display: none !important;
         }
 
@@ -249,18 +216,10 @@
         <div class="channels-pane" id="chPane"></div>
 
         <div class="player-pane" id="playerPane">
-            <div class="video-container" id="videoContainer" onclick="toggleFullScreen()">
-                <div class="live-badge">LIVE</div>
-                <div class="channel-title-overlay" id="currentChTitle">4K | Alwan Sport 1</div>
-            </div>
+            <div class="video-container" id="videoContainer" onclick="toggleFullScreen()"></div>
 
-            <div class="controls-pane">
-                <div></div>
-                <div class="action-buttons">
-                    <button class="btn" onclick="reloadStream()">تحديث البث</button>
-                    <button class="btn" onclick="toggleFullScreen()">ملء الشاشة</button>
-                    <button class="btn">بحث</button>
-                </div>
+            <div class="info-pane">
+                <div class="channel-title-text" id="currentChTitle">4K | Alwan Sport 1</div>
             </div>
         </div>
     </div>
@@ -313,12 +272,6 @@
                 div.onclick = () => playStream(ch.url, ch.name, div);
                 chPane.appendChild(div);
             });
-        }
-
-        function reloadStream() {
-            if (currentUrl) {
-                playStream(currentUrl, currentName);
-            }
         }
 
         function playStream(url, name, element = null) {
