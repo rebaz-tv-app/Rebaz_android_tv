@@ -40,17 +40,10 @@
         }
 
         .nav-item {
-            color: #94a3b8;
+            color: #f59e0b;
             font-size: 16px;
             font-weight: bold;
             padding: 6px 16px;
-            border-radius: 20px;
-            cursor: pointer;
-            outline: none;
-        }
-
-        .nav-item.active {
-            color: #f59e0b;
             border-bottom: 2px solid #f59e0b;
         }
 
@@ -62,7 +55,6 @@
             width: 300px;
             display: flex;
             align-items: center;
-            outline: none;
         }
 
         .search-box input {
@@ -103,17 +95,11 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            color: #cbd5e1;
+            color: #f59e0b;
+            background: #1e293b;
+            border-right: 4px solid #f59e0b;
             font-size: 15px;
             cursor: pointer;
-            outline: none;
-            border-right: 4px solid transparent;
-        }
-
-        .cat-item.active {
-            background: #1e293b;
-            color: #f59e0b;
-            border-right: 4px solid #f59e0b;
         }
 
         .channels-pane {
@@ -132,7 +118,6 @@
             color: #e2e8f0;
             font-size: 14px;
             cursor: pointer;
-            outline: none;
         }
 
         .ch-item.active {
@@ -213,33 +198,31 @@
             outline: none;
         }
 
-        .nav-item:focus, .search-box:focus, .cat-item:focus, .ch-item:focus, .btn:focus, .video-container:focus {
-            outline: 3px solid #f59e0b !important;
-            background-color: #1e293b !important;
-            transform: scale(1.01);
-            transition: all 0.1s ease-in-out;
-        }
-
-        /* Fullscreen Layout Overrides */
-        body.fullscreen-active .header,
-        body.fullscreen-active .categories-pane,
-        body.fullscreen-active .channels-pane,
-        body.fullscreen-active .controls-pane {
+        body.fullscreen-mode .header,
+        body.fullscreen-mode .categories-pane,
+        body.fullscreen-mode .channels-pane,
+        body.fullscreen-mode .controls-pane {
             display: none !important;
         }
 
-        body.fullscreen-active .main-content {
+        body.fullscreen-mode .main-content {
             height: 100vh !important;
+            width: 100vw !important;
         }
 
-        body.fullscreen-active .player-pane {
+        body.fullscreen-mode .player-pane {
             width: 100vw !important;
             height: 100vh !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            z-index: 99999 !important;
         }
 
-        body.fullscreen-active .video-container {
+        body.fullscreen-mode .video-container {
             width: 100vw !important;
             height: 100vh !important;
+            background: transparent !important;
         }
     </style>
 </head>
@@ -247,17 +230,17 @@
 
     <div class="header">
         <div class="top-nav">
-            <div class="nav-item active" tabindex="0">بث مباشر</div>
+            <div class="nav-item">بث مباشر</div>
         </div>
-        <div class="search-box" tabindex="0">
+        <div class="search-box">
             <input type="text" placeholder="بحث عن قناة..." readonly>
         </div>
         <div class="app-logo">REBAZ TV</div>
     </div>
 
     <div class="main-content">
-        <div class="categories-pane" id="catPane">
-            <div class="cat-item active" tabindex="0" onclick="loadChannels(0)">
+        <div class="categories-pane">
+            <div class="cat-item">
                 <span>Alwan Sports</span>
                 <span style="color:#64748b;">1</span>
             </div>
@@ -265,8 +248,8 @@
 
         <div class="channels-pane" id="chPane"></div>
 
-        <div class="player-pane">
-            <div class="video-container" id="videoContainer" tabindex="0" onclick="toggleFullScreen()">
+        <div class="player-pane" id="playerPane">
+            <div class="video-container" id="videoContainer" onclick="toggleFullScreen()">
                 <div class="live-badge">LIVE</div>
                 <div class="channel-title-overlay" id="currentChTitle">4K | Alwan Sport 1</div>
             </div>
@@ -274,9 +257,9 @@
             <div class="controls-pane">
                 <div></div>
                 <div class="action-buttons">
-                    <button class="btn" tabindex="0" onclick="reloadStream()">تحديث البث</button>
-                    <button class="btn" tabindex="0" onclick="toggleFullScreen()">ملء الشاشة</button>
-                    <button class="btn" tabindex="0">بحث</button>
+                    <button class="btn" onclick="reloadStream()">تحديث البث</button>
+                    <button class="btn" onclick="toggleFullScreen()">ملء الشاشة</button>
+                    <button class="btn">بحث</button>
                 </div>
             </div>
         </div>
@@ -303,9 +286,9 @@
         function toggleFullScreen() {
             isFullScreen = !isFullScreen;
             if (isFullScreen) {
-                document.body.classList.add('fullscreen-active');
+                document.body.classList.add('fullscreen-mode');
             } else {
-                document.body.classList.remove('fullscreen-active');
+                document.body.classList.remove('fullscreen-mode');
             }
 
             if (window.Android && window.Android.toggleFullScreen) {
@@ -315,7 +298,7 @@
 
         function exitFullScreenJS() {
             isFullScreen = false;
-            document.body.classList.remove('fullscreen-active');
+            document.body.classList.remove('fullscreen-mode');
         }
 
         function loadChannels(catIndex) {
@@ -326,15 +309,10 @@
             channels.forEach((ch, idx) => {
                 const div = document.createElement('div');
                 div.className = `ch-item ${idx === 0 ? 'active' : ''}`;
-                div.setAttribute('tabindex', '0');
                 div.innerHTML = `<span class="ch-num">${ch.num}</span> <span>${ch.name}</span>`;
                 div.onclick = () => playStream(ch.url, ch.name, div);
                 chPane.appendChild(div);
             });
-
-            if(channels.length > 0) {
-                playStream(channels[0].url, channels[0].name);
-            }
         }
 
         function reloadStream() {
@@ -364,7 +342,7 @@
                 if (categories[0].channels.length > 0) {
                     playStream(categories[0].channels[0].url, categories[0].channels[0].name);
                 }
-            }, 400);
+            }, 600);
         };
     </script>
 </body>
