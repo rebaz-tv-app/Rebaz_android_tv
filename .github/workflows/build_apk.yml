@@ -80,8 +80,8 @@ jobs:
                   applicationId "com.rebazandroid.tv"
                   minSdk 21
                   targetSdk 34
-                  versionCode 7
-                  versionName "7.0"
+                  versionCode 8
+                  versionName "8.0"
               }
 
               compileOptions {
@@ -95,6 +95,7 @@ jobs:
               implementation 'androidx.media3:media3-exoplayer:1.2.1'
               implementation 'androidx.media3:media3-exoplayer-hls:1.2.1'
               implementation 'androidx.media3:media3-ui:1.2.1'
+              implementation 'androidx.media3:media3-datasource:1.2.1'
           }
           EOF
 
@@ -160,9 +161,16 @@ jobs:
           import androidx.media3.common.MediaItem;
           import androidx.media3.common.PlaybackException;
           import androidx.media3.common.Player;
+          import androidx.media3.datasource.DefaultHttpDataSource;
           import androidx.media3.exoplayer.ExoPlayer;
+          import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
+          import androidx.media3.extractor.DefaultExtractorsFactory;
+          import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory;
           import androidx.media3.ui.AspectRatioFrameLayout;
           import androidx.media3.ui.PlayerView;
+
+          import java.util.HashMap;
+          import java.util.Map;
 
           public class MainActivity extends Activity {
               private WebView webView;
@@ -178,7 +186,27 @@ jobs:
                   FrameLayout rootLayout = new FrameLayout(this);
                   rootLayout.setBackgroundColor(Color.parseColor("#050811"));
 
-                  player = new ExoPlayer.Builder(this).build();
+                  Map<String, String> headers = new HashMap<>();
+                  headers.put("User-Agent", "IPTVSmartersPlayer");
+
+                  DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory()
+                          .setUserAgent("IPTVSmartersPlayer")
+                          .setConnectTimeoutMs(15000)
+                          .setReadTimeoutMs(15000)
+                          .setDefaultRequestProperties(headers)
+                          .setAllowCrossProtocolRedirects(true);
+
+                  DefaultExtractorsFactory extractorsFactory = new DefaultExtractorsFactory()
+                          .setConstantBitrateSeekingEnabled(true)
+                          .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES);
+
+                  DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(this, extractorsFactory)
+                          .setDataSourceFactory(dataSourceFactory);
+
+                  player = new ExoPlayer.Builder(this)
+                          .setMediaSourceFactory(mediaSourceFactory)
+                          .build();
+
                   playerView = new PlayerView(this);
                   playerView.setPlayer(player);
                   playerView.setUseController(false);
@@ -191,7 +219,6 @@ jobs:
                   int headerHeight = (int) (48 * metrics.density);
                   int availableHeight = screenHeight - headerHeight;
 
-                  // Player on TOP RIGHT (50% width, 60% height)
                   int initialW = (int) (screenWidth * 0.50);
                   int initialH = (int) (availableHeight * 0.62);
 
@@ -213,6 +240,11 @@ jobs:
                   webSettings.setAllowFileAccessFromFileURLs(true);
                   webSettings.setAllowUniversalAccessFromFileURLs(true);
                   webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+
+                  // Disable Cache so web view always reloads fresh files
+                  webSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+                  webView.clearCache(true);
+                  webView.clearHistory();
 
                   webView.addJavascriptInterface(new WebAppInterface(), "Android");
                   webView.setWebViewClient(new WebViewClient());
