@@ -80,8 +80,8 @@ jobs:
                   applicationId "com.rebazandroid.tv"
                   minSdk 21
                   targetSdk 34
-                  versionCode 8
-                  versionName "8.0"
+                  versionCode 9
+                  versionName "9.0"
               }
 
               compileOptions {
@@ -95,7 +95,8 @@ jobs:
               implementation 'androidx.media3:media3-exoplayer:1.2.1'
               implementation 'androidx.media3:media3-exoplayer-hls:1.2.1'
               implementation 'androidx.media3:media3-ui:1.2.1'
-              implementation 'androidx.media3:media3-datasource:1.2.1'
+              implementation 'androidx.media3:media3-datasource-okhttp:1.2.1'
+              implementation 'com.squareup.okhttp3:okhttp:4.11.0'
           }
           EOF
 
@@ -161,16 +162,13 @@ jobs:
           import androidx.media3.common.MediaItem;
           import androidx.media3.common.PlaybackException;
           import androidx.media3.common.Player;
-          import androidx.media3.datasource.DefaultHttpDataSource;
+          import androidx.media3.datasource.okhttp.OkHttpDataSource;
           import androidx.media3.exoplayer.ExoPlayer;
           import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
-          import androidx.media3.extractor.DefaultExtractorsFactory;
-          import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory;
           import androidx.media3.ui.AspectRatioFrameLayout;
           import androidx.media3.ui.PlayerView;
 
-          import java.util.HashMap;
-          import java.util.Map;
+          import okhttp3.OkHttpClient;
 
           public class MainActivity extends Activity {
               private WebView webView;
@@ -186,22 +184,16 @@ jobs:
                   FrameLayout rootLayout = new FrameLayout(this);
                   rootLayout.setBackgroundColor(Color.parseColor("#050811"));
 
-                  Map<String, String> headers = new HashMap<>();
-                  headers.put("User-Agent", "IPTVSmartersPlayer");
+                  // Configure OkHttp client with User-Agent to bypass IPTV blocking
+                  OkHttpClient okHttpClient = new OkHttpClient.Builder()
+                          .retryOnConnectionFailure(true)
+                          .build();
 
-                  DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory()
-                          .setUserAgent("IPTVSmartersPlayer")
-                          .setConnectTimeoutMs(15000)
-                          .setReadTimeoutMs(15000)
-                          .setDefaultRequestProperties(headers)
-                          .setAllowCrossProtocolRedirects(true);
+                  OkHttpDataSource.Factory okHttpDataSourceFactory = new OkHttpDataSource.Factory(okHttpClient)
+                          .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
 
-                  DefaultExtractorsFactory extractorsFactory = new DefaultExtractorsFactory()
-                          .setConstantBitrateSeekingEnabled(true)
-                          .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES);
-
-                  DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(this, extractorsFactory)
-                          .setDataSourceFactory(dataSourceFactory);
+                  DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(this)
+                          .setDataSourceFactory(okHttpDataSourceFactory);
 
                   player = new ExoPlayer.Builder(this)
                           .setMediaSourceFactory(mediaSourceFactory)
@@ -222,13 +214,7 @@ jobs:
                   int initialW = (int) (screenWidth * 0.50);
                   int initialH = (int) (availableHeight * 0.62);
 
-                  FrameLayout.LayoutParams playerParams = new FrameLayout.LayoutParams(initialW, initialH);
-                  playerParams.gravity = Gravity.TOP | Gravity.RIGHT;
-                  playerParams.topMargin = headerHeight;
-                  playerParams.rightMargin = 0;
-                  playerView.setLayoutParams(playerParams);
-                  playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FILL);
-
+                  // Setup WebView first so it sits behind or properly alongside, but let's make sure player view is correctly added
                   webView = new WebView(this);
                   webView.setBackgroundColor(Color.TRANSPARENT);
                   webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
@@ -240,17 +226,33 @@ jobs:
                   webSettings.setAllowFileAccessFromFileURLs(true);
                   webSettings.setAllowUniversalAccessFromFileURLs(true);
                   webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-
-                  // Disable Cache so web view always reloads fresh files
                   webSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+
                   webView.clearCache(true);
                   webView.clearHistory();
 
                   webView.addJavascriptInterface(new WebAppInterface(), "Android");
-                  webView.setWebViewClient(new WebViewClient());
+                  webView.setWebViewClient(new WebViewClient() {
+                      @Override
+                      public void onPageFinished(WebView view, String url) {
+                          super.onPageFinished(view, url);
+                          // Ensure webview background is transparent so player shows through underneath
+                          webView.setBackgroundColor(Color.TRANSPARENT);
+                      }
+                  });
 
-                  rootLayout.addView(playerView);
+                  // Add WebView first, then PlayerView on top of the player-space area
                   rootLayout.addView(webView);
+
+                  FrameLayout.LayoutParams playerParams = new FrameLayout.LayoutParams(initialW, initialH);
+                  playerParams.gravity = Gravity.TOP | Gravity.RIGHT;
+                  playerParams.topMargin = headerHeight;
+                  playerParams.rightMargin = 0;
+                  playerView.setLayoutParams(playerParams);
+                  playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FILL);
+                  
+                  rootLayout.addView(playerView);
+
                   setContentView(rootLayout);
 
                   player.addListener(new Player.Listener() {
@@ -271,7 +273,7 @@ jobs:
                               playStreamInternal(currentUrl);
                           }
                       }
-                  }, 2000);
+                  }, 3000);
               }
 
               private void playStreamInternal(String url) {
@@ -286,7 +288,7 @@ jobs:
 
               private void applyFullScreenState(final boolean full) {
                   new Handler(Looper.getMainLooper()).post(new Runnable() {
-                      @Override
+                      @Runnable
                       public void run() {
                           isFullScreen = full;
                           if (isFullScreen) {
@@ -298,7 +300,6 @@ jobs:
                               params.setMargins(0, 0, 0, 0);
                               playerView.setLayoutParams(params);
                           } else {
-                              webView.bringToFront();
                               DisplayMetrics metrics = new DisplayMetrics();
                               getWindowManager().getDefaultDisplay().getMetrics(metrics);
                               int screenWidth = metrics.widthPixels;
@@ -314,6 +315,7 @@ jobs:
                               params.topMargin = headerHeight;
                               params.rightMargin = 0;
                               playerView.setLayoutParams(params);
+                              playerView.bringToFront();
                           }
                           playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FILL);
                           playerView.requestLayout();
