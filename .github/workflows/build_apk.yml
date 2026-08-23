@@ -29,9 +29,9 @@ jobs:
           mkdir -p android_project/app/src/main/assets
           mkdir -p android_project/app/src/main/res/values
 
-          # Copy html and web files
-          cp index.html android_project/app/src/main/assets/
-          cp -r *.css *.js *.png android_project/app/src/main/assets/ 2>/dev/null || true
+          # Copy ALL user design files (index.html, css, js, images, etc.) from repository directly into assets
+          cp index.html android_project/app/src/main/assets/ 2>/dev/null || true
+          cp -r *.css *.js *.png *.jpg *.jpeg *.ico android_project/app/src/main/assets/ 2>/dev/null || true
 
           # Create gradle.properties
           cat << 'EOF' > android_project/gradle.properties
@@ -80,8 +80,8 @@ jobs:
                   applicationId "com.rebazandroid.tv"
                   minSdk 21
                   targetSdk 34
-                  versionCode 11
-                  versionName "11.0"
+                  versionCode 14
+                  versionName "14.0"
               }
 
               compileOptions {
@@ -92,11 +92,6 @@ jobs:
 
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'androidx.media3:media3-exoplayer:1.2.1'
-              implementation 'androidx.media3:media3-exoplayer-hls:1.2.1'
-              implementation 'androidx.media3:media3-ui:1.2.1'
-              implementation 'androidx.media3:media3-datasource-okhttp:1.2.1'
-              implementation 'com.squareup.okhttp3:okhttp:4.11.0'
           }
           EOF
 
@@ -110,7 +105,7 @@ jobs:
           </resources>
           EOF
 
-          # Create AndroidManifest.xml
+          # Create AndroidManifest.xml with cleartext traffic enabled for http streams
           cat << 'EOF' > android_project/app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -129,7 +124,8 @@ jobs:
 
                   <activity
                       android:name="com.rebazandroid.tv.MainActivity"
-                      android:exported="true">
+                      android:exported="true"
+                      android:hardwareAccelerated="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN" />
                           <category android:name="android.intent.category.LAUNCHER" />
@@ -140,226 +136,102 @@ jobs:
           </manifest>
           EOF
 
-          # Create MainActivity.java
+          # Create MainActivity.java with advanced WebView & WebChromeClient for Fullscreen/Video playback support
           cat << 'EOF' > android_project/app/src/main/java/com/rebazandroid/tv/MainActivity.java
           package com.rebazandroid.tv;
 
           import android.app.Activity;
-          import android.graphics.Color;
-          import android.net.Uri;
           import android.os.Bundle;
-          import android.os.Handler;
-          import android.os.Looper;
-          import android.util.DisplayMetrics;
-          import android.view.Gravity;
           import android.view.View;
-          import android.webkit.JavascriptInterface;
+          import android.view.ViewGroup;
+          import android.webkit.WebChromeClient;
           import android.webkit.WebSettings;
           import android.webkit.WebView;
           import android.webkit.WebViewClient;
           import android.widget.FrameLayout;
 
-          import androidx.media3.common.MediaItem;
-          import androidx.media3.common.PlaybackException;
-          import androidx.media3.common.Player;
-          import androidx.media3.datasource.okhttp.OkHttpDataSource;
-          import androidx.media3.exoplayer.ExoPlayer;
-          import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
-          import androidx.media3.ui.AspectRatioFrameLayout;
-          import androidx.media3.ui.PlayerView;
-
-          import okhttp3.OkHttpClient;
-
           public class MainActivity extends Activity {
               private WebView webView;
-              private ExoPlayer player;
-              private PlayerView playerView;
-              private String currentUrl = "";
-              private boolean isFullScreen = false;
+              private View customView;
+              private WebChromeClient.CustomViewCallback customViewCallback;
+              private FrameLayout fullscreenContainer;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
 
-                  FrameLayout rootLayout = new FrameLayout(this);
-                  rootLayout.setBackgroundColor(Color.parseColor("#050811"));
-
-                  OkHttpClient okHttpClient = new OkHttpClient.Builder()
-                          .retryOnConnectionFailure(true)
-                          .build();
-
-                  OkHttpDataSource.Factory okHttpDataSourceFactory = new OkHttpDataSource.Factory(okHttpClient)
-                          .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-
-                  DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(this)
-                          .setDataSourceFactory(okHttpDataSourceFactory);
-
-                  player = new ExoPlayer.Builder(this)
-                          .setMediaSourceFactory(mediaSourceFactory)
-                          .build();
-
-                  playerView = new PlayerView(this);
-                  playerView.setPlayer(player);
-                  playerView.setUseController(false);
-                  playerView.setShutterBackgroundColor(Color.TRANSPARENT);
-
-                  DisplayMetrics metrics = new DisplayMetrics();
-                  getWindowManager().getDefaultDisplay().getMetrics(metrics);
-                  int screenWidth = metrics.widthPixels;
-                  int screenHeight = metrics.heightPixels;
-                  int headerHeight = (int) (48 * metrics.density);
-                  int availableHeight = screenHeight - headerHeight;
-
-                  int initialW = (int) (screenWidth * 0.50);
-                  int initialH = (int) (availableHeight * 0.62);
-
                   webView = new WebView(this);
-                  webView.setBackgroundColor(Color.TRANSPARENT);
                   webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
                   WebSettings webSettings = webView.getSettings();
                   webSettings.setJavaScriptEnabled(true);
                   webSettings.setDomStorageEnabled(true);
+                  webSettings.setDatabaseEnabled(true);
                   webSettings.setAllowFileAccess(true);
                   webSettings.setAllowFileAccessFromFileURLs(true);
                   webSettings.setAllowUniversalAccessFromFileURLs(true);
                   webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                  webSettings.setMediaPlaybackRequiresUserGesture(false);
                   webSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);
 
                   webView.clearCache(true);
                   webView.clearHistory();
 
-                  webView.addJavascriptInterface(new WebAppInterface(), "Android");
                   webView.setWebViewClient(new WebViewClient() {
                       @Override
-                      public void onPageFinished(WebView view, String url) {
-                          super.onPageFinished(view, url);
-                          webView.setBackgroundColor(Color.TRANSPARENT);
+                      public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                          view.loadUrl(url);
+                          return true;
                       }
                   });
 
-                  rootLayout.addView(webView);
-
-                  // Fixed alignment to LEFT because in RTL layout the player space is on the left side
-                  FrameLayout.LayoutParams playerParams = new FrameLayout.LayoutParams(initialW, initialH);
-                  playerParams.gravity = Gravity.TOP | Gravity.LEFT;
-                  playerParams.topMargin = headerHeight;
-                  playerParams.leftMargin = 0;
-                  playerView.setLayoutParams(playerParams);
-                  playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FILL);
-                  
-                  rootLayout.addView(playerView);
-
-                  setContentView(rootLayout);
-
-                  player.addListener(new Player.Listener() {
+                  webView.setWebChromeClient(new WebChromeClient() {
                       @Override
-                      public void onPlayerError(PlaybackException error) {
-                          reconnectStream();
+                      public void onShowCustomView(View view, CustomViewCallback callback) {
+                          if (customView != null) {
+                              callback.onCustomViewHidden();
+                              return;
+                          }
+                          customView = view;
+                          customViewCallback = callback;
+                          
+                          webView.setVisibility(View.GONE);
+                          
+                          fullscreenContainer = new FrameLayout(MainActivity.this);
+                          fullscreenContainer.setBackgroundColor(0xFF000000);
+                          fullscreenContainer.addView(customView, new ViewGroup.LayoutParams(
+                                  ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                          setContentView(fullscreenContainer);
+                      }
+
+                      @Override
+                      public void onHideCustomView() {
+                          if (customView == null) return;
+                          
+                          setContentView(webView);
+                          if (fullscreenContainer != null) {
+                              fullscreenContainer.removeView(customView);
+                          }
+                          customView = null;
+                          webView.setVisibility(View.VISIBLE);
+                          if (customViewCallback != null) {
+                              customViewCallback.onCustomViewHidden();
+                          }
                       }
                   });
 
                   webView.loadUrl("file:///android_asset/index.html");
-              }
-
-              private void reconnectStream() {
-                  new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-                      @Override
-                      public void run() {
-                          if (player != null && currentUrl != null && !currentUrl.isEmpty()) {
-                              playStreamInternal(currentUrl);
-                          }
-                      }
-                  }, 3000);
-              }
-
-              private void playStreamInternal(String url) {
-                  if (player != null && url != null && !url.isEmpty()) {
-                      currentUrl = url;
-                      MediaItem mediaItem = MediaItem.fromUri(Uri.parse(url));
-                      player.setMediaItem(mediaItem);
-                      player.prepare();
-                      player.setPlayWhenReady(true);
-                  }
-              }
-
-              private void applyFullScreenState(final boolean full) {
-                  new Handler(Looper.getMainLooper()).post(new Runnable() {
-                      @Override
-                      public void run() {
-                        isFullScreen = full;
-                          if (isFullScreen) {
-                              playerView.bringToFront();
-                              FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-                                      FrameLayout.LayoutParams.MATCH_PARENT,
-                                      FrameLayout.LayoutParams.MATCH_PARENT
-                              );
-                              params.setMargins(0, 0, 0, 0);
-                              playerView.setLayoutParams(params);
-                          } else {
-                              DisplayMetrics metrics = new DisplayMetrics();
-                              getWindowManager().getDefaultDisplay().getMetrics(metrics);
-                              int screenWidth = metrics.widthPixels;
-                              int screenHeight = metrics.heightPixels;
-                              int headerHeight = (int) (48 * metrics.density);
-                              int availableHeight = screenHeight - headerHeight;
-
-                              int pWidth = (int) (screenWidth * 0.50);
-                              int pHeight = (int) (availableHeight * 0.62);
-
-                              FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(pWidth, pHeight);
-                              params.gravity = Gravity.TOP | Gravity.LEFT;
-                              params.topMargin = headerHeight;
-                              params.leftMargin = 0;
-                              playerView.setLayoutParams(params);
-                              playerView.bringToFront();
-                          }
-                          playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FILL);
-                          playerView.requestLayout();
-                      }
-                  });
-              }
-
-              public class WebAppInterface {
-                  @JavascriptInterface
-                  public void playStream(final String url) {
-                      new Handler(Looper.getMainLooper()).post(new Runnable() {
-                          @Override
-                          public void run() {
-                              playStreamInternal(url);
-                          }
-                      });
-                  }
-
-                  @JavascriptInterface
-                  public void toggleFullScreen(final boolean full) {
-                      applyFullScreenState(full);
-                  }
-              }
-
-              @Override
-              protected void onDestroy() {
-                  super.onDestroy();
-                  if (player != null) {
-                      player.release();
-                      player = null;
-                  }
-              }
-
-              @Override
-              protected void onStop() {
-                  super.onStop();
-                  if (player != null) {
-                      player.pause();
-                  }
+                  setContentView(webView);
               }
 
               @Override
               public void onBackPressed() {
-                  if (isFullScreen) {
-                      applyFullScreenState(false);
-                      webView.evaluateJavascript("if(typeof exitFullScreenJS === 'function') exitFullScreenJS();", null);
-                  } else if (webView.canGoBack()) {
+                  if (customView != null) {
+                      WebChromeClient chromeClient = webView.getWebChromeClient();
+                      if (chromeClient != null) {
+                          chromeClient.onHideCustomView();
+                      }
+                  } else if (webView != null && webView.canGoBack()) {
                       webView.goBack();
                   } else {
                       super.onBackPressed();
