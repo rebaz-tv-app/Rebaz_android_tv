@@ -80,8 +80,8 @@ jobs:
                   applicationId "com.rebazandroid.tv"
                   minSdk 21
                   targetSdk 34
-                  versionCode 1
-                  versionName "1.0"
+                  versionCode 3
+                  versionName "3.0"
               }
 
               compileOptions {
@@ -138,7 +138,7 @@ jobs:
           </manifest>
           EOF
 
-          # Create MainActivity.java with Stable SurfaceView & Dynamic Native Resizing
+          # Create MainActivity.java
           cat << 'EOF' > android_project/app/src/main/java/com/rebazandroid/tv/MainActivity.java
           package com.rebazandroid.tv;
 
@@ -163,7 +163,7 @@ jobs:
           import androidx.media3.datasource.DefaultHttpDataSource;
           import androidx.media3.exoplayer.DefaultLoadControl;
           import androidx.media3.exoplayer.ExoPlayer;
-          import androidx.media3.exoplayer.source.ProgressiveMediaSource;
+          import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
           import androidx.media3.extractor.DefaultExtractorsFactory;
           import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory;
           import androidx.media3.ui.AspectRatioFrameLayout;
@@ -177,13 +177,7 @@ jobs:
               private ExoPlayer player;
               private PlayerView playerView;
               private String currentUrl = "";
-              private DefaultHttpDataSource.Factory dataSourceFactory;
-              private DefaultExtractorsFactory extractorsFactory;
               private boolean isFullScreen = false;
-
-              private int playerWidth;
-              private int playerHeight;
-              private int headerHeight;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
@@ -191,52 +185,39 @@ jobs:
 
                   getWindow().getDecorView().setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
 
-                  FrameLayout rootLayout = new FrameLayout(this);
+                  // Main Root Layout holding both Player and WebView
+                  final FrameLayout rootLayout = new FrameLayout(this);
                   rootLayout.setBackgroundColor(Color.parseColor("#060913"));
                   rootLayout.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
-
-                  DisplayMetrics metrics = new DisplayMetrics();
-                  getWindowManager().getDefaultDisplay().getMetrics(metrics);
-                  int screenWidth = metrics.widthPixels;
-                  int screenHeight = metrics.heightPixels;
-
-                  float density = metrics.density;
-                  headerHeight = (int) (60 * density);
-                  int availableHeight = screenHeight - headerHeight;
-
-                  playerWidth = (int) (screenWidth * 0.52);
-                  playerHeight = (int) (availableHeight * 0.70);
 
                   Map<String, String> headers = new HashMap<>();
                   headers.put("Connection", "keep-alive");
                   headers.put("Accept", "*/*");
                   headers.put("User-Agent", "IPTVSmartersPlayer");
 
-                  dataSourceFactory = new DefaultHttpDataSource.Factory()
+                  DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory()
                           .setUserAgent("IPTVSmartersPlayer")
                           .setConnectTimeoutMs(15000)
                           .setReadTimeoutMs(15000)
                           .setDefaultRequestProperties(headers)
                           .setAllowCrossProtocolRedirects(true);
 
-                  extractorsFactory = new DefaultExtractorsFactory()
+                  DefaultExtractorsFactory extractorsFactory = new DefaultExtractorsFactory()
                           .setConstantBitrateSeekingEnabled(true)
                           .setTsExtractorFlags(
                                   DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES |
                                   DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS
                           );
 
+                  DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory);
+
                   DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
-                          .setBufferDurationsMs(
-                                  500,
-                                  30000,
-                                  500,
-                                  500
-                          )
+                          .setBufferDurationsMs(1000, 30000, 1000, 1000)
                           .setPrioritizeTimeOverSizeThresholds(true)
                           .build();
 
                   player = new ExoPlayer.Builder(this)
+                          .setMediaSourceFactory(mediaSourceFactory)
                           .setLoadControl(loadControl)
                           .build();
 
@@ -247,7 +228,19 @@ jobs:
                   playerView.setKeepContentOnPlayerReset(true);
                   playerView.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
 
-                  FrameLayout.LayoutParams playerParams = new FrameLayout.LayoutParams(playerWidth, playerHeight);
+                  // Initially match the web view's video container dimensions perfectly
+                  DisplayMetrics metrics = new DisplayMetrics();
+                  getWindowManager().getDefaultDisplay().getMetrics(metrics);
+                  int screenWidth = metrics.widthPixels;
+                  int screenHeight = metrics.heightPixels;
+                  float density = metrics.density;
+                  int headerHeight = (int) (60 * density);
+                  int availableHeight = screenHeight - headerHeight;
+
+                  final int initialW = (int) (screenWidth * 0.52);
+                  final int initialH = (int) (availableHeight * 0.70);
+
+                  final FrameLayout.LayoutParams playerParams = new FrameLayout.LayoutParams(initialW, initialH);
                   playerParams.gravity = Gravity.TOP | Gravity.LEFT;
                   playerParams.topMargin = headerHeight;
                   playerParams.leftMargin = 0;
@@ -301,18 +294,14 @@ jobs:
                               playStreamInternal(currentUrl);
                           }
                       }
-                  }, 300);
+                  }, 2000);
               }
 
               private void playStreamInternal(String url) {
                   if (player != null && url != null && !url.isEmpty()) {
                       currentUrl = url;
-                      ProgressiveMediaSource mediaSource = new ProgressiveMediaSource.Factory(
-                              dataSourceFactory,
-                              extractorsFactory
-                      ).createMediaSource(MediaItem.fromUri(Uri.parse(url)));
-
-                      player.setMediaSource(mediaSource);
+                      MediaItem mediaItem = MediaItem.fromUri(Uri.parse(url));
+                      player.setMediaSource(player.getMediaSourceFactory().createMediaSource(mediaItem));
                       player.prepare();
                       player.setPlayWhenReady(true);
                   }
@@ -323,20 +312,35 @@ jobs:
                       @Override
                       public void run() {
                           isFullScreen = full;
-                          FrameLayout.LayoutParams params;
                           if (isFullScreen) {
-                              params = new FrameLayout.LayoutParams(
+                              // Bring player to front and make it absolute match_parent (true fullscreen, hiding webview underneath or filling screen)
+                              playerView.bringToFront();
+                              FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
                                       FrameLayout.LayoutParams.MATCH_PARENT,
                                       FrameLayout.LayoutParams.MATCH_PARENT
                               );
                               params.setMargins(0, 0, 0, 0);
+                              playerView.setLayoutParams(params);
                           } else {
-                              params = new FrameLayout.LayoutParams(playerWidth, playerHeight);
+                              // Put webview back on top so UI clicks work, restore player size
+                              webView.bringToFront();
+                              DisplayMetrics metrics = new DisplayMetrics();
+                              getWindowManager().getDefaultDisplay().getMetrics(metrics);
+                              int screenWidth = metrics.widthPixels;
+                              int screenHeight = metrics.heightPixels;
+                              float density = metrics.density;
+                              int headerHeight = (int) (60 * density);
+                              int availableHeight = screenHeight - headerHeight;
+
+                              int pWidth = (int) (screenWidth * 0.52);
+                              int pHeight = (int) (availableHeight * 0.70);
+
+                              FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(pWidth, pHeight);
                               params.gravity = Gravity.TOP | Gravity.LEFT;
                               params.topMargin = headerHeight;
                               params.leftMargin = 0;
+                              playerView.setLayoutParams(params);
                           }
-                          playerView.setLayoutParams(params);
                           playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FILL);
                           playerView.requestLayout();
                       }
@@ -345,7 +349,7 @@ jobs:
 
               public class WebAppInterface {
                   @JavascriptInterface
-                  public void playStream(final String url) {
+                  public void playStream(finalString url) {
                       new Handler(Looper.getMainLooper()).post(new Runnable() {
                           @Override
                           public void run() {
