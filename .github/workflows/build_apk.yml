@@ -66,7 +66,7 @@ jobs:
           }
           EOF
 
-          # Create App build.gradle
+          # Create App build.gradle with ExoPlayer
           cat << 'EOF' > android_project/app/build.gradle
           plugins {
               id 'com.android.application'
@@ -80,8 +80,8 @@ jobs:
                   applicationId "com.rebazandroid.tv"
                   minSdk 21
                   targetSdk 34
-                  versionCode 14
-                  versionName "14.0"
+                  versionCode 15
+                  versionName "15.0"
               }
 
               compileOptions {
@@ -92,6 +92,8 @@ jobs:
 
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'androidx.media3:media3-exoplayer:1.2.1'
+              implementation 'androidx.media3:media3-exoplayer-ui:1.2.1'
           }
           EOF
 
@@ -136,132 +138,185 @@ jobs:
           </manifest>
           EOF
 
-          # Create MainActivity.java with JavaScript Bridge & Video Intent Support
+          # Create MainActivity.java with Internal ExoPlayer and WebView Hybrid layout
           cat << 'EOF' > android_project/app/src/main/java/com/rebazandroid/tv/MainActivity.java
           package com.rebazandroid.tv;
 
           import android.app.Activity;
-          import android.content.Intent;
+          import android.graphics.Color;
           import android.net.Uri;
           import android.os.Bundle;
+          import android.view.Gravity;
           import android.view.View;
           import android.view.ViewGroup;
           import android.webkit.JavascriptInterface;
-          import android.webkit.WebChromeClient;
           import android.webkit.WebSettings;
           import android.webkit.WebView;
           import android.webkit.WebViewClient;
-          import android.widget.FrameLayout;
-          import android.widget.Toast;
+          import android.widget.Button;
+          import android.widget.LinearLayout;
+          import android.widget.TextView;
+
+          import androidx.media3.common.MediaItem;
+          import androidx.media3.exoplayer.ExoPlayer;
+          import androidx.media3.ui.PlayerView;
 
           public class MainActivity extends Activity {
               private WebView webView;
-              private View customView;
-              private WebChromeClient.CustomViewCallback customViewCallback;
-              private FrameLayout fullscreenContainer;
+              private ExoPlayer player;
+              private PlayerView playerView;
+              private TextView titleTextView;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
 
+                  // دروستکردنی ڕوکاری سەرەکی بە شێوازی پەڕەی ئاسۆیی (RTL)
+                  LinearLayout rootLayout = new LinearLayout(this);
+                  rootLayout.setOrientation(LinearLayout.HORIZONTAL);
+                  rootLayout.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+                  rootLayout.setBackgroundColor(Color.parseColor("#050811"));
+                  rootLayout.setLayoutParams(new ViewGroup.LayoutParams(
+                          ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+                  // بەشی ڕاست: WebView بۆ لیست و کەناڵەکان
                   webView = new WebView(this);
+                  LinearLayout.LayoutParams webParams = new LinearLayout.LayoutParams(
+                          0, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f);
+                  webView.setLayoutParams(webParams);
                   webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
                   WebSettings webSettings = webView.getSettings();
                   webSettings.setJavaScriptEnabled(true);
                   webSettings.setDomStorageEnabled(true);
-                  webSettings.setDatabaseEnabled(true);
                   webSettings.setAllowFileAccess(true);
-                  webSettings.setAllowFileAccessFromFileURLs(true);
-                  webSettings.setAllowUniversalAccessFromFileURLs(true);
                   webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-                  webSettings.setMediaPlaybackRequiresUserGesture(false);
-                  webSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);
 
-                  webView.clearCache(true);
-                  webView.clearHistory();
-
-                  // ڕێکخستنی پردی پەیوەندی لەگەڵ JavaScript
                   webView.addJavascriptInterface(new WebAppInterface(), "Android");
+                  webView.setWebViewClient(new WebViewClient());
 
-                  webView.setWebViewClient(new WebViewClient() {
+                  // بەشی چەپ: پلەیەری ناوخۆیی (ExoPlayer) و پانێڵی زانیاری
+                  LinearLayout leftPanel = new LinearLayout(this);
+                  leftPanel.setOrientation(LinearLayout.VERTICAL);
+                  LinearLayout.LayoutParams leftParams = new LinearLayout.LayoutParams(
+                          0, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f);
+                  leftPanel.setLayoutParams(leftParams);
+                  leftPanel.setBackgroundColor(Color.parseColor("#050811"));
+
+                  // دروستکردنی ExoPlayer View
+                  playerView = new PlayerView(this);
+                  LinearLayout.LayoutParams playerParams = new LinearLayout.LayoutParams(
+                          ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.62f);
+                  playerView.setLayoutParams(playerParams);
+                  playerView.setBackgroundColor(Color.BLACK);
+
+                  // دروستکردنی پانێڵی خوارەوەی پلەیەر (ناونیشان و دوگمەکان)
+                  LinearLayout infoPanel = new LinearLayout(this);
+                  infoPanel.setOrientation(LinearLayout.VERTICAL);
+                  LinearLayout.LayoutParams infoParams = new LinearLayout.LayoutParams(
+                          ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.38f);
+                  infoPanel.setLayoutParams(infoParams);
+                  infoPanel.setPadding(30, 20, 30, 20);
+                  infoPanel.setBackgroundColor(Color.parseColor("#050811"));
+
+                  titleTextView = new TextView(this);
+                  titleTextView.setText("Alwan Sport 1 4K");
+                  titleTextView.setTextColor(Color.WHITE);
+                  titleTextView.setTextSize(18);
+                  titleTextView.setTypeface(null, android.graphics.Typeface.BOLD);
+                  infoPanel.addView(titleTextView);
+
+                  // دوگمەکانی خوارەوە
+                  LinearLayout btnLayout = new LinearLayout(this);
+                  btnLayout.setOrientation(LinearLayout.HORIZONTAL);
+                  btnLayout.setGravity(Gravity.END);
+                  LinearLayout.LayoutParams btnLayoutParams = new LinearLayout.LayoutParams(
+                          ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                  btnLayoutParams.topMargin = 15;
+                  btnLayout.setLayoutParams(btnLayoutParams);
+
+                  Button btnFav = new Button(this);
+                  btnFav.setText("إضافة إلى المفضلة");
+                  btnFav.setBackgroundColor(Color.parseColor("#1a2744"));
+                  btnFav.setTextColor(Color.parseColor("#a0b2d6"));
+                  btnFav.setPadding(20, 10, 20, 10);
+
+                  Button btnFull = new Button(this);
+                  btnFull.setText("شاشەی پڕ (Fullscreen)");
+                  btnFull.setBackgroundColor(Color.parseColor("#0072ce"));
+                  btnFull.setTextColor(Color.WHITE);
+                  btnFull.setPadding(20, 10, 20, 10);
+                  LinearLayout.LayoutParams fullParams = new LinearLayout.LayoutParams(
+                          ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                  fullParams.rightMargin = 15;
+                  btnFull.setLayoutParams(fullParams);
+                  btnFull.setOnClickListener(new View.OnClickListener() {
                       @Override
-                      public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                          view.loadUrl(url);
-                          return true;
+                      public void onClick(View v) {
+                          if (player != null) {
+                              // دەتوانێت شاشەی پڕ بکات یان پلەیەر گەورە بکات
+                          }
                       }
                   });
 
-                  webView.setWebChromeClient(new WebChromeClient() {
-                      @Override
-                      public void onShowCustomView(View view, CustomViewCallback callback) {
-                          if (customView != null) {
-                              callback.onCustomViewHidden();
-                              return;
-                          }
-                          customView = view;
-                          customViewCallback = callback;
-                          
-                          webView.setVisibility(View.GONE);
-                          
-                          fullscreenContainer = new FrameLayout(MainActivity.this);
-                          fullscreenContainer.setBackgroundColor(0xFF000000);
-                          fullscreenContainer.addView(customView, new ViewGroup.LayoutParams(
-                                  ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-                          setContentView(fullscreenContainer);
-                      }
+                  btnLayout.addView(btnFull);
+                  btnLayout.addView(btnFav);
+                  infoPanel.addView(btnLayout);
 
-                      @Override
-                      public void onHideCustomView() {
-                          if (customView == null) return;
-                          
-                          setContentView(webView);
-                          if (fullscreenContainer != null) {
-                              fullscreenContainer.removeView(customView);
-                          }
-                          customView = null;
-                          webView.setVisibility(View.VISIBLE);
-                          if (customViewCallback != null) {
-                              customViewCallback.onCustomViewHidden();
-                          }
-                      }
-                  });
+                  // کۆکردنەوەی بەشەکان لە چەپ
+                  leftPanel.addView(playerView);
+                  leftPanel.addView(infoPanel);
 
+                  // زیادکردنی هەردوو بەش بۆ ڕوکاری سەرەکی
+                  rootLayout.addView(webView);
+                  rootLayout.addView(leftPanel);
+
+                  setContentView(rootLayout);
+
+                  // ڕێکخستنی ExoPlayer
+                  player = new ExoPlayer.Builder(this).build();
+                  playerView.setPlayer(player);
+
+                  // بارکردنی پەڕەی HTML
                   webView.loadUrl("file:///android_asset/index.html");
-                  setContentView(webView);
               }
 
               public class WebAppInterface {
                   @JavascriptInterface
-                  public void playStream(final String url) {
+                  public void playStream(final String url, final String title) {
                       runOnUiThread(new Runnable() {
                           @Override
                           public void run() {
                               try {
-                                  Intent intent = new Intent(Intent.ACTION_VIEW);
-                                  intent.setDataAndType(Uri.parse(url), "video/*");
-                                  startActivity(intent);
+                                  if (player != null) {
+                                      MediaItem mediaItem = MediaItem.fromUri(Uri.parse(url));
+                                      player.setMediaItem(mediaItem);
+                                      player.prepare();
+                                      player.play();
+                                  }
+                                  if (titleTextView != null) {
+                                      titleTextView.setText(title);
+                                  }
                               } catch (Exception e) {
-                                  Toast.makeText(MainActivity.this, "هیچ پلەیەرێک بۆ پەخشکردن نەدۆزرایەوە", Toast.LENGTH_SHORT).show();
+                                  e.printStackTrace();
                               }
                           }
                       });
                   }
+              }
 
-                  @JavascriptInterface
-                  public void toggleFullScreen(boolean isFull) {
-                      // بەڕێوەبردنی شاشەی پڕ
+              @Override
+              protected void onDestroy() {
+                  super.onDestroy();
+                  if (player != null) {
+                      player.release();
+                      player = null;
                   }
               }
 
               @Override
               public void onBackPressed() {
-                  if (customView != null) {
-                      WebChromeClient chromeClient = webView.getWebChromeClient();
-                      if (chromeClient != null) {
-                          chromeClient.onHideCustomView();
-                      }
-                  } else if (webView != null && webView.canGoBack()) {
+                  if (webView != null && webView.canGoBack()) {
                       webView.goBack();
                   } else {
                       super.onBackPressed();
