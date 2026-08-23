@@ -33,11 +33,163 @@ jobs:
           mkdir -p android_project/app/src/main/java/com/rebazandroid/tv
           mkdir -p android_project/app/src/main/assets
           mkdir -p android_project/app/src/main/res/values
-          mkdir -p android_project/app/src/main/res/layout
 
-          # Copy user HTML/CSS assets
+          # Copy assets
           cp index.html android_project/app/src/main/assets/ 2>/dev/null || true
           cp -r *.css *.js *.png *.jpg *.jpeg *.ico android_project/app/src/main/assets/ 2>/dev/null || true
+
+          # Inject index.html with mpegts.js engine for direct .ts playback
+          cat << 'EOF' > android_project/app/src/main/assets/index.html
+          <!DOCTYPE html>
+          <html lang="ar" dir="rtl">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>REBAZ TV</title>
+              <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
+              <style>
+                  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+                  body {
+                      background-color: #050811;
+                      color: #ffffff;
+                      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                      overflow: hidden;
+                      height: 100vh;
+                      direction: rtl;
+                  }
+                  .header {
+                      height: 48px;
+                      background: #080c18;
+                      display: flex;
+                      align-items: center;
+                      justify-content: space-between;
+                      padding: 0 15px;
+                      border-bottom: 1px solid #141e33;
+                  }
+                  .nav-links { display: flex; gap: 20px; align-items: center; }
+                  .nav-item { font-size: 14px; color: #8fa0c0; cursor: pointer; padding: 5px 8px; border-bottom: 2px solid transparent; }
+                  .nav-item.active { color: #e5a93b; font-weight: bold; border-bottom-color: #e5a93b; }
+                  .search-box { background: #0d1527; border: 1px solid #1e2c4a; border-radius: 20px; padding: 4px 12px; display: flex; align-items: center; width: 220px; }
+                  .search-box input { background: transparent; border: none; color: white; outline: none; width: 100%; font-size: 12px; text-align: right; }
+                  .logo { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: bold; color: #00d2ff; }
+                  
+                  .main-layout { display: flex; height: calc(100vh - 48px); width: 100vw; }
+                  .left-side { width: 50%; display: flex; border-left: 1px solid #141e33; background: #070b16; }
+                  .categories-col { width: 45%; background: #090e1c; border-left: 1px solid #141e33; overflow-y: auto; }
+                  .cat-item { padding: 12px 10px; font-size: 13px; color: #a0b2d6; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-bottom: 1px solid #0d1527; }
+                  .cat-item.active, .cat-item:hover, .cat-item:focus { background: #121c33; color: #e5a93b; outline: none; }
+                  .cat-count { font-size: 11px; color: #5d7299; }
+                  .channels-col { width: 55%; background: #070b16; overflow-y: auto; }
+                  .ch-item { padding: 10px; font-size: 13px; color: #d8e4fc; display: flex; align-items: center; gap: 8px; cursor: pointer; border-bottom: 1px solid #0d1527; }
+                  .ch-item.active, .ch-item:hover, .ch-item:focus { background: #14213d; color: #ffffff; outline: none; border-right: 3px solid #00d2ff; }
+                  .ch-num { font-size: 12px; color: #5d7299; width: 28px; }
+                  
+                  .right-side { width: 50%; display: flex; flex-direction: column; }
+                  .player-space { height: 62%; background: #000; position: relative; }
+                  .player-space video { width: 100%; height: 100%; object-fit: contain; }
+                  .info-panel { height: 38%; background: #050811; padding: 12px 15px; display: flex; flex-direction: column; justify-content: space-between; border-top: 1px solid #141e33; }
+                  .ch-title { font-size: 18px; font-weight: bold; color: #ffffff; }
+                  .action-btns { display: flex; justify-content: flex-end; gap: 10px; }
+                  .btn { background: #0072ce; color: #ffffff; border: none; padding: 8px 16px; border-radius: 20px; font-size: 13px; cursor: pointer; font-weight: bold; }
+                  .btn:focus, .btn:hover { background: #0099ff; outline: 2px solid #ffffff; }
+                  .btn-fav { background: #1a2744; color: #a0b2d6; }
+              </style>
+          </head>
+          <body>
+
+              <div class="header">
+                  <div class="nav-links">
+                      <div class="nav-item">مسكن</div>
+                      <div class="nav-item active">بث مباشر</div>
+                      <div class="nav-item">افلام</div>
+                      <div class="nav-item">مسلسلات</div>
+                  </div>
+                  <div class="search-box">
+                      <input type="text" placeholder="بحث...">
+                  </div>
+                  <div class="logo">
+                      <span>📺</span> REBAZ TV
+                  </div>
+              </div>
+
+              <div class="main-layout">
+                  <div class="left-side">
+                      <div class="categories-col">
+                          <div class="cat-item active" tabindex="0">
+                              <span>وەرزشی</span>
+                              <span class="cat-count">1</span>
+                          </div>
+                      </div>
+                      <div class="channels-col">
+                          <div class="ch-item active" tabindex="0" onclick="playChannel('http://mhiptv.com:8080/live/hk030/6985423976/212760.ts', 'Alwan Sport 1 4K')">
+                              <span class="ch-num">1</span>
+                              <span>Alwan Sport 1 4K</span>
+                          </div>
+                      </div>
+                  </div>
+
+                  <div class="right-side">
+                      <div class="player-space">
+                          <video id="mainPlayer" autoplay controls></video>
+                      </div>
+                      <div class="info-panel">
+                          <div class="ch-title" id="selected-ch">Alwan Sport 1 4K</div>
+                          <div class="action-btns">
+                              <button class="btn btn-fav">إضافة إلى المفضلة</button>
+                              <button class="btn" onclick="toggleFull()">شاشەی پڕ (Fullscreen)</button>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+
+              <script>
+                  let player = null;
+
+                  window.onload = function() {
+                      setTimeout(() => {
+                          playChannel('http://mhiptv.com:8080/live/hk030/6985423976/212760.ts', 'Alwan Sport 1 4K');
+                      }, 500);
+                  };
+
+                  function playChannel(url, title) {
+                      document.getElementById('selected-ch').innerText = title;
+                      let videoElement = document.getElementById('mainPlayer');
+
+                      if (player) {
+                          player.destroy();
+                          player = null;
+                      }
+
+                      if (mpegts.isSupported()) {
+                          player = mpegts.createPlayer({
+                              type: 'mse',
+                              isLive: true,
+                              url: url
+                          }, {
+                              enableWorker: true,
+                              lazyLoadMaxDuration: 3 * 60,
+                              seekType: 'range'
+                          });
+                          player.attachMediaElement(videoElement);
+                          player.load();
+                          player.play().catch(e => console.log("Error playing stream:", e));
+                      } else {
+                          videoElement.src = url;
+                          videoElement.play().catch(e => console.log("Direct play error:", e));
+                      }
+                  }
+
+                  function toggleFull() {
+                      let video = document.getElementById('mainPlayer');
+                      if (video) {
+                          if (video.requestFullscreen) video.requestFullscreen();
+                          else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
+                      }
+                  }
+              </script>
+          </body>
+          </html>
+          EOF
 
           # Create gradle.properties
           cat << 'EOF' > android_project/gradle.properties
@@ -72,7 +224,7 @@ jobs:
           }
           EOF
 
-          # Create App build.gradle (Adding ExoPlayer Media3)
+          # Create App build.gradle
           cat << 'EOF' > android_project/app/build.gradle
           plugins {
               id 'com.android.application'
@@ -86,8 +238,8 @@ jobs:
                   applicationId "com.rebazandroid.tv"
                   minSdk 21
                   targetSdk 34
-                  versionCode 22
-                  versionName "22.0"
+                  versionCode 23
+                  versionName "23.0"
               }
 
               compileOptions {
@@ -98,9 +250,6 @@ jobs:
 
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'androidx.media3:media3-exoplayer:1.2.1'
-              implementation 'androidx.media3:media3-ui:1.2.1'
-              implementation 'androidx.media3:media3-common:1.2.1'
           }
           EOF
 
@@ -112,23 +261,6 @@ jobs:
                   <item name="android:windowBackground">@android:color/black</item>
               </style>
           </resources>
-          EOF
-
-          # Create Player Layout
-          cat << 'EOF' > android_project/app/src/main/res/layout/activity_player.xml
-          <?xml version="1.0" encoding="utf-8"?>
-          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:background="#000000">
-
-              <androidx.media3.ui.PlayerView
-                  android:id="@+id/playerView"
-                  android:layout_width="match_parent"
-                  android:layout_height="match_parent"
-                  android:keepScreenOn="true" />
-
-          </RelativeLayout>
           EOF
 
           # Create AndroidManifest.xml
@@ -158,69 +290,16 @@ jobs:
                           <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
                       </intent-filter>
                   </activity>
-
-                  <activity
-                      android:name="com.rebazandroid.tv.PlayerActivity"
-                      android:configChanges="orientation|screenSize|layoutDirection"
-                      android:exported="false" />
-
               </application>
           </manifest>
           EOF
 
-          # Create PlayerActivity.java (ExoPlayer Native)
-          cat << 'EOF' > android_project/app/src/main/java/com/rebazandroid/tv/PlayerActivity.java
-          package com.rebazandroid.tv;
-
-          import android.app.Activity;
-          import android.net.Uri;
-          import android.os.Bundle;
-          import androidx.media3.common.MediaItem;
-          import androidx.media3.exoplayer.ExoPlayer;
-          import androidx.media3.ui.PlayerView;
-
-          public class PlayerActivity extends Activity {
-              private ExoPlayer player;
-              private PlayerView playerView;
-
-              @Override
-              protected void onCreate(Bundle savedInstanceState) {
-                  super.onCreate(savedInstanceState);
-                  setContentView(R.layout.activity_player);
-
-                  playerView = findViewById(R.id.playerView);
-                  String streamUrl = getIntent().getStringExtra("STREAM_URL");
-
-                  if (streamUrl != null && !streamUrl.isEmpty()) {
-                      player = new ExoPlayer.Builder(this).build();
-                      playerView.setPlayer(player);
-
-                      MediaItem mediaItem = MediaItem.fromUri(Uri.parse(streamUrl));
-                      player.setMediaItem(mediaItem);
-                      player.prepare();
-                      player.play();
-                  }
-              }
-
-              @Override
-              protected void onDestroy() {
-                  super.onDestroy();
-                  if (player != null) {
-                      player.release();
-                      player = null;
-                  }
-              }
-          }
-          EOF
-
-          # Create MainActivity.java
+          # Create MainActivity.java with Universal CORS and Custom User-Agent
           cat << 'EOF' > android_project/app/src/main/java/com/rebazandroid/tv/MainActivity.java
           package com.rebazandroid.tv;
 
           import android.app.Activity;
-          import android.content.Intent;
           import android.os.Bundle;
-          import android.webkit.JavascriptInterface;
           import android.webkit.WebChromeClient;
           import android.webkit.WebSettings;
           import android.webkit.WebView;
@@ -242,27 +321,14 @@ jobs:
                   webSettings.setDomStorageEnabled(true);
                   webSettings.setAllowFileAccess(true);
                   webSettings.setAllowContentAccess(true);
+                  webSettings.setAllowFileAccessFromFileURLs(true);
+                  webSettings.setAllowUniversalAccessFromFileURLs(true);
+                  webSettings.setMediaPlaybackRequiresUserGesture(false);
                   webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-
-                  webView.addJavascriptInterface(new WebAppInterface(), "Android");
+                  webSettings.setUserAgentString("VLC/3.0.18 LibVLC/3.0.18");
 
                   setContentView(webView);
                   webView.loadUrl("file:///android_asset/index.html");
-              }
-
-              public class WebAppInterface {
-                  @JavascriptInterface
-                  public void playStream(String url, String title) {
-                      Intent intent = new Intent(MainActivity.this, PlayerActivity.class);
-                      intent.putExtra("STREAM_URL", url);
-                      intent.putExtra("STREAM_TITLE", title);
-                      startActivity(intent);
-                  }
-
-                  @JavascriptInterface
-                  public void playStream(String url) {
-                      playStream(url, "");
-                  }
               }
 
               @Override
