@@ -34,11 +34,11 @@ jobs:
           mkdir -p android_project/app/src/main/assets
           mkdir -p android_project/app/src/main/res/values
 
-          # Download HLS and MPEGTS player libraries locally into APK assets to avoid CDN failure
+          # Download HLS and MPEGTS player libraries locally
           curl -sL https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js -o android_project/app/src/main/assets/hls.min.js
           curl -sL https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js -o android_project/app/src/main/assets/mpegts.min.js
 
-          # Inject index.html with Universal Player Logic
+          # Inject index.html with Auto-Fallback Engine (.ts to .m3u8)
           cat << 'EOF' > android_project/app/src/main/assets/index.html
           <!DOCTYPE html>
           <html lang="ar" dir="rtl">
@@ -58,15 +58,7 @@ jobs:
                       height: 100vh;
                       direction: rtl;
                   }
-                  .header {
-                      height: 48px;
-                      background: #080c18;
-                      display: flex;
-                      align-items: center;
-                      justify-content: space-between;
-                      padding: 0 15px;
-                      border-bottom: 1px solid #141e33;
-                  }
+                  .header { height: 48px; background: #080c18; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #141e33; }
                   .nav-links { display: flex; gap: 20px; align-items: center; }
                   .nav-item { font-size: 14px; color: #8fa0c0; cursor: pointer; padding: 5px 8px; border-bottom: 2px solid transparent; }
                   .nav-item.active { color: #e5a93b; font-weight: bold; border-bottom-color: #e5a93b; }
@@ -97,7 +89,6 @@ jobs:
               </style>
           </head>
           <body>
-
               <div class="header">
                   <div class="nav-links">
                       <div class="nav-item">مسكن</div>
@@ -105,26 +96,18 @@ jobs:
                       <div class="nav-item">افلام</div>
                       <div class="nav-item">مسلسلات</div>
                   </div>
-                  <div class="search-box">
-                      <input type="text" placeholder="بحث...">
-                  </div>
-                  <div class="logo">
-                      <span>📺</span> REBAZ TV
-                  </div>
+                  <div class="search-box"><input type="text" placeholder="بحث..."></div>
+                  <div class="logo"><span>📺</span> REBAZ TV</div>
               </div>
 
               <div class="main-layout">
                   <div class="left-side">
                       <div class="categories-col">
-                          <div class="cat-item active" tabindex="0">
-                              <span>وەرزشی</span>
-                              <span class="cat-count">1</span>
-                          </div>
+                          <div class="cat-item active"><span>وەرزشی</span><span class="cat-count">1</span></div>
                       </div>
                       <div class="channels-col">
-                          <div class="ch-item active" tabindex="0" onclick="playChannel('http://mhiptv.com:8080/live/hk030/6985423976/212760.ts', 'Alwan Sport 1 (.TS)')">
-                              <span class="ch-num">1</span>
-                              <span>Alwan Sport 1 (.TS)</span>
+                          <div class="ch-item active" onclick="playChannel('http://mhiptv.com:8080/live/hk030/6985423976/212760.ts', 'Alwan Sport 1 (.TS)')">
+                              <span class="ch-num">1</span><span>Alwan Sport 1 (.TS)</span>
                           </div>
                       </div>
                   </div>
@@ -154,75 +137,60 @@ jobs:
                   };
 
                   function destroyPlayers() {
-                      if (currentHls) {
-                          currentHls.destroy();
-                          currentHls = null;
-                      }
-                      if (currentMpegts) {
-                          currentMpegts.destroy();
-                          currentMpegts = null;
-                      }
+                      if (currentHls) { currentHls.destroy(); currentHls = null; }
+                      if (currentMpegts) { currentMpegts.destroy(); currentMpegts = null; }
                   }
 
                   function playChannel(url, title) {
                       document.getElementById('selected-ch').innerText = title;
                       let videoElement = document.getElementById('mainPlayer');
-
                       destroyPlayers();
 
-                      let lowerUrl = url.toLowerCase();
+                      let isTs = url.toLowerCase().includes('.ts');
+                      // Trick: Convert .ts to .m3u8 for native fallback (bypasses CORS)
+                      let fallbackM3u8 = isTs ? url.replace('.ts', '.m3u8') : url;
 
-                      if (lowerUrl.includes('.m3u8')) {
-                          playHls(url, videoElement);
+                      if (isTs && typeof mpegts !== 'undefined' && mpegts.isSupported()) {
+                          try {
+                              currentMpegts = mpegts.createPlayer({
+                                  type: 'mse',
+                                  isLive: true,
+                                  url: url
+                              });
+                              currentMpegts.attachMediaElement(videoElement);
+                              currentMpegts.load();
+                              currentMpegts.play().catch(e => {
+                                  console.log("MPEGTS Play Error, trying fallback", e);
+                                  playHlsOrNative(fallbackM3u8, videoElement);
+                              });
+
+                              currentMpegts.on(mpegts.Events.ERROR, function(err, errDet) {
+                                  console.log("MPEGTS Error Event:", errDet);
+                                  playHlsOrNative(fallbackM3u8, videoElement);
+                              });
+                          } catch (e) {
+                              playHlsOrNative(fallbackM3u8, videoElement);
+                          }
                       } else {
-                          playMpegTs(url, videoElement);
+                          playHlsOrNative(fallbackM3u8, videoElement);
                       }
                   }
 
-                  function playMpegTs(url, videoElement) {
-                      if (typeof mpegts !== 'undefined' && mpegts.isSupported()) {
-                          currentMpegts = mpegts.createPlayer({
-                              type: 'mpegts',
-                              isLive: true,
-                              url: url
-                          }, {
-                              enableWorker: true,
-                              lazyLoadMaxDuration: 3 * 60,
-                              seekType: 'range',
-                              liveBufferLatencyChasing: true
-                          });
-                          currentMpegts.attachMediaElement(videoElement);
-                          currentMpegts.load();
-                          currentMpegts.play().catch(e => {
-                              console.log("MPEGTS play error, trying HLS fallback:", e);
-                              playHls(url, videoElement);
-                          });
-                      } else {
-                          playHls(url, videoElement);
-                      }
-                  }
-
-                  function playHls(url, videoElement) {
-                      if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-                          currentHls = new Hls({
-                              enableWorker: true,
-                              lowLatencyMode: true
-                          });
-                          currentHls.loadSource(url);
-                          currentHls.attachMedia(videoElement);
-                          currentHls.on(Hls.Events.MANIFEST_PARSED, function() {
-                              videoElement.play().catch(e => console.log("HLS play error:", e));
-                          });
-                          currentHls.on(Hls.Events.ERROR, function(event, data) {
-                              if (data.fatal) {
-                                  videoElement.src = url;
-                                  videoElement.play().catch(e => console.log("Native direct play error:", e));
-                              }
-                          });
-                      } else {
-                          videoElement.src = url;
-                          videoElement.play().catch(e => console.log("Direct play error:", e));
-                      }
+                  function playHlsOrNative(url, videoElement) {
+                      destroyPlayers();
+                      // Native Android WebView handles HLS natively and ignores CORS!
+                      videoElement.src = url;
+                      videoElement.play().catch(e => {
+                          // Final fallback using hls.js
+                          if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+                              currentHls = new Hls({ enableWorker: true, lowLatencyMode: true });
+                              currentHls.loadSource(url);
+                              currentHls.attachMedia(videoElement);
+                              currentHls.on(Hls.Events.MANIFEST_PARSED, function() {
+                                  videoElement.play();
+                              });
+                          }
+                      });
                   }
 
                   function toggleFull() {
@@ -245,58 +213,27 @@ jobs:
 
           # Create settings.gradle
           cat << 'EOF' > android_project/settings.gradle
-          pluginManagement {
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-              }
-          }
-          dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal(); } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral(); } }
           rootProject.name = "REBAZ TV"
           include ':app'
           EOF
 
           # Create Root build.gradle
           cat << 'EOF' > android_project/build.gradle
-          plugins {
-              id 'com.android.application' version '8.2.2' apply false
-          }
+          plugins { id 'com.android.application' version '8.2.2' apply false }
           EOF
 
           # Create App build.gradle
           cat << 'EOF' > android_project/app/build.gradle
-          plugins {
-              id 'com.android.application'
-          }
-
+          plugins { id 'com.android.application' }
           android {
               namespace 'com.rebazandroid.tv'
               compileSdk 34
-
-              defaultConfig {
-                  applicationId "com.rebazandroid.tv"
-                  minSdk 21
-                  targetSdk 34
-                  versionCode 25
-                  versionName "25.0"
-              }
-
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
-              }
+              defaultConfig { applicationId "com.rebazandroid.tv"; minSdk 21; targetSdk 34; versionCode 26; versionName "26.0" }
+              compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17; }
           }
-
-          dependencies {
-              implementation 'androidx.appcompat:appcompat:1.6.1'
-          }
+          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
           EOF
 
           # Create styles.xml
@@ -313,19 +250,16 @@ jobs:
           cat << 'EOF' > android_project/app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-
               <uses-permission android:name="android.permission.INTERNET" />
               <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
               <uses-feature android:name="android.hardware.type.television" android:required="false" />
               <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
-
               <application
                   android:allowBackup="true"
                   android:label="REBAZ TV"
                   android:supportsRtl="false"
                   android:usesCleartextTraffic="true"
                   android:theme="@style/AppTheme">
-
                   <activity
                       android:name="com.rebazandroid.tv.MainActivity"
                       android:exported="true"
@@ -340,29 +274,24 @@ jobs:
           </manifest>
           EOF
 
-          # Create MainActivity.java with Custom Native CORS Proxy Engine
+          # Create MainActivity.java with Standard Chrome User-Agent
           cat << 'EOF' > android_project/app/src/main/java/com/rebazandroid/tv/MainActivity.java
           package com.rebazandroid.tv;
 
           import android.app.Activity;
           import android.net.http.SslError;
           import android.os.Bundle;
+          import android.view.View;
           import android.webkit.SslErrorHandler;
           import android.webkit.WebChromeClient;
-          import android.webkit.WebResourceRequest;
-          import android.webkit.WebResourceResponse;
           import android.webkit.WebSettings;
           import android.webkit.WebView;
           import android.webkit.WebViewClient;
 
-          import java.io.InputStream;
-          import java.net.HttpURLConnection;
-          import java.net.URL;
-          import java.util.HashMap;
-          import java.util.Map;
-
           public class MainActivity extends Activity {
               private WebView webView;
+              private View customView;
+              private WebChromeClient.CustomViewCallback customViewCallback;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
@@ -373,73 +302,47 @@ jobs:
                   webView.setWebViewClient(new WebViewClient() {
                       @Override
                       public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
-                          handler.proceed();
-                      }
-
-                      @Override
-                      public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                          String url = request.getUrl().toString();
-                          if (url.startsWith("http://") || url.startsWith("https://")) {
-                              if (url.contains(".ts") || url.contains(".m3u8") || url.contains(":8080") || url.contains("/live/")) {
-                                  try {
-                                      URL u = new URL(url);
-                                      HttpURLConnection conn = (HttpURLConnection) u.openConnection();
-                                      conn.setRequestMethod(request.getMethod());
-                                      conn.setRequestProperty("User-Agent", "VLC/3.0.18 LibVLC/3.0.18");
-                                      
-                                      Map<String, String> reqHeaders = request.getRequestHeaders();
-                                      if (reqHeaders != null) {
-                                          for (Map.Entry<String, String> entry : reqHeaders.entrySet()) {
-                                              conn.setRequestProperty(entry.getKey(), entry.getValue());
-                                          }
-                                      }
-
-                                      conn.setConnectTimeout(10000);
-                                      conn.setReadTimeout(10000);
-
-                                      int responseCode = conn.getResponseCode();
-                                      InputStream inputStream = (responseCode >= 400) ? conn.getErrorStream() : conn.getInputStream();
-
-                                      String mimeType = "video/mp2t";
-                                      if (url.contains(".m3u8")) {
-                                          mimeType = "application/x-mpegURL";
-                                      }
-
-                                      Map<String, String> resHeaders = new HashMap<>();
-                                      resHeaders.put("Access-Control-Allow-Origin", "*");
-                                      resHeaders.put("Access-Control-Allow-Methods", "GET, POST, OPTIONS, HEAD");
-                                      resHeaders.put("Access-Control-Allow-Headers", "*");
-                                      resHeaders.put("Access-Control-Allow-Credentials", "true");
-
-                                      return new WebResourceResponse(
-                                          mimeType,
-                                          "UTF-8",
-                                          responseCode,
-                                          conn.getResponseMessage() != null ? conn.getResponseMessage() : "OK",
-                                          resHeaders,
-                                          inputStream
-                                      );
-                                  } catch (Exception e) {
-                                      e.printStackTrace();
-                                  }
-                              }
-                          }
-                          return super.shouldInterceptRequest(view, request);
+                          handler.proceed(); // Ignore SSL errors for expired IPTV certificates
                       }
                   });
 
-                  webView.setWebChromeClient(new WebChromeClient());
+                  webView.setWebChromeClient(new WebChromeClient() {
+                      @Override
+                      public void onShowCustomView(View view, CustomViewCallback callback) {
+                          if (customView != null) {
+                              callback.onCustomViewHidden();
+                              return;
+                          }
+                          customView = view;
+                          customViewCallback = callback;
+                          setContentView(customView);
+                      }
+
+                      @Override
+                      public void onHideCustomView() {
+                          if (customView == null) return;
+                          customView = null;
+                          customViewCallback.onCustomViewHidden();
+                          setContentView(webView);
+                      }
+                  });
 
                   WebSettings webSettings = webView.getSettings();
                   webSettings.setJavaScriptEnabled(true);
                   webSettings.setDomStorageEnabled(true);
                   webSettings.setAllowFileAccess(true);
                   webSettings.setAllowContentAccess(true);
-                  webSettings.setAllowFileAccessFromFileURLs(true);
-                  webSettings.setAllowUniversalAccessFromFileURLs(true);
+                  
+                  try {
+                      webSettings.setAllowFileAccessFromFileURLs(true);
+                      webSettings.setAllowUniversalAccessFromFileURLs(true);
+                  } catch (Exception e) { }
+
                   webSettings.setMediaPlaybackRequiresUserGesture(false);
                   webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-                  webSettings.setUserAgentString("VLC/3.0.18 LibVLC/3.0.18");
+                  
+                  // Use a Standard Chrome User-Agent to avoid being blocked by servers
+                  webSettings.setUserAgentString("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36");
 
                   setContentView(webView);
                   webView.loadUrl("file:///android_asset/index.html");
@@ -447,7 +350,9 @@ jobs:
 
               @Override
               public void onBackPressed() {
-                  if (webView != null && webView.canGoBack()) {
+                  if (customView != null) {
+                      webView.getWebChromeClient().onHideCustomView();
+                  } else if (webView != null && webView.canGoBack()) {
                       webView.goBack();
                   } else {
                       super.onBackPressed();
