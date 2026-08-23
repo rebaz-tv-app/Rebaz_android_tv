@@ -4,295 +4,299 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>REBAZ TV</title>
+
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-        body {
-            background-color: #050811;
-            color: #ffffff;
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden;
-            height: 100vh;
-            direction: rtl;
+            user-select: none;
         }
 
-        /* Top Navigation Bar */
+        body {
+            background-color: transparent;
+            color: #ffffff;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
         .header {
-            height: 48px;
-            background: #080c18;
+            height: 60px;
+            background: linear-gradient(180deg, #0e1628 0%, #060913 100%);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 15px;
-            border-bottom: 1px solid #141e33;
+            padding: 0 25px;
+            border-bottom: 1px solid #1e293b;
         }
-        .nav-links {
+
+        .top-nav {
             display: flex;
             gap: 20px;
             align-items: center;
         }
+
         .nav-item {
-            font-size: 14px;
-            color: #8fa0c0;
-            cursor: pointer;
-            padding: 5px 8px;
-            border-bottom: 2px solid transparent;
-        }
-        .nav-item.active {
-            color: #e5a93b;
+            color: #f59e0b;
+            font-size: 16px;
             font-weight: bold;
-            border-bottom-color: #e5a93b;
+            padding: 6px 16px;
+            border-bottom: 2px solid #f59e0b;
         }
+
         .search-box {
-            background: #0d1527;
-            border: 1px solid #1e2c4a;
+            background: #111827;
+            border: 1px solid #374151;
             border-radius: 20px;
-            padding: 4px 12px;
+            padding: 5px 20px;
+            width: 300px;
             display: flex;
             align-items: center;
-            width: 220px;
         }
+
         .search-box input {
             background: transparent;
             border: none;
             color: white;
             outline: none;
             width: 100%;
-            font-size: 12px;
-            text-align: right;
+            text-align: center;
         }
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 16px;
+
+        .app-logo {
             font-weight: bold;
-            color: #00d2ff;
+            color: #38bdf8;
+            font-size: 18px;
+            background: #0f172a;
+            padding: 5px 12px;
+            border-radius: 8px;
+            border: 1px solid #0284c7;
         }
 
-        /* Main Container Layout */
-        .main-layout {
+        .main-content {
             display: flex;
-            height: calc(100vh - 48px);
-            width: 100vw;
+            flex: 1;
+            height: calc(100vh - 60px);
         }
 
-        /* Left Side: Categories & Channels (50% width) */
-        .left-side {
-            width: 50%;
-            display: flex;
-            border-left: 1px solid #141e33;
-            background: #070b16;
-        }
-
-        /* Categories Column (45% of left side) */
-        .categories-col {
-            width: 45%;
-            background: #090e1c;
-            border-left: 1px solid #141e33;
+        .categories-pane {
+            width: 22%;
+            background: #0b1120;
+            border-left: 1px solid #1e293b;
             overflow-y: auto;
+            padding: 10px 0;
         }
+
         .cat-item {
-            padding: 12px 10px;
-            font-size: 13px;
-            color: #a0b2d6;
+            padding: 14px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            color: #f59e0b;
+            background: #1e293b;
+            border-right: 4px solid #f59e0b;
+            font-size: 15px;
             cursor: pointer;
-            border-bottom: 1px solid #0d1527;
-        }
-        .cat-item.active, .cat-item:hover, .cat-item:focus {
-            background: #121c33;
-            color: #e5a93b;
-            outline: none;
-        }
-        .cat-count {
-            font-size: 11px;
-            color: #5d7299;
         }
 
-        /* Channels Column (55% of left side) */
-        .channels-col {
-            width: 55%;
-            background: #070b16;
+        .channels-pane {
+            width: 26%;
+            background: #0f172a;
+            border-left: 1px solid #1e293b;
             overflow-y: auto;
+            padding: 10px 0;
         }
+
         .ch-item {
-            padding: 10px;
-            font-size: 13px;
-            color: #d8e4fc;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            border-bottom: 1px solid #0d1527;
-        }
-        .ch-item.active, .ch-item:hover, .ch-item:focus {
-            background: #14213d;
-            color: #ffffff;
-            outline: none;
-            border-right: 3px solid #00d2ff;
-        }
-        .ch-num {
-            font-size: 12px;
-            color: #5d7299;
-            width: 28px;
-        }
-
-        /* Right Side: ExoPlayer Placeholder + Info Bar (50% width) */
-        .right-side {
-            width: 50%;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Transparent Top Area for Native Player overlay */
-        .player-space {
-            height: 62%;
-            background: transparent;
-            pointer-events: none;
-        }
-
-        /* Bottom Info & Control Bar */
-        .info-panel {
-            height: 38%;
-            background: #050811;
             padding: 12px 15px;
             display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            border-top: 1px solid #141e33;
-        }
-        .ch-title {
-            font-size: 18px;
-            font-weight: bold;
-            color: #ffffff;
-        }
-        .action-btns {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-        .btn {
-            background: #0072ce;
-            color: #ffffff;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 13px;
+            align-items: center;
+            gap: 12px;
+            color: #e2e8f0;
+            font-size: 14px;
             cursor: pointer;
+        }
+
+        .ch-item.active {
+            background: #1e293b;
+            color: #38bdf8;
+        }
+
+        .ch-num {
+            color: #64748b;
+            font-size: 13px;
+            width: 30px;
+        }
+
+        .player-pane {
+            width: 52%;
+            display: flex;
+            flex-direction: column;
+            background: transparent;
+            position: relative;
+        }
+
+        .video-container {
+            width: 100%;
+            height: 85%;
+            background: transparent;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .info-pane {
+            height: 15%;
+            background: linear-gradient(180deg, #0b1120 0%, #030712 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 20px;
+            border-top: 1px solid #1e293b;
+        }
+
+        .channel-title-text {
+            font-size: 15px;
+            color: #ffffff;
             font-weight: bold;
+            text-align: center;
         }
-        .btn:focus, .btn:hover {
-            background: #0099ff;
-            outline: 2px solid #ffffff;
+
+        /* Fullscreen mode: Hides everything except the video container */
+        body.fullscreen-mode .header,
+        body.fullscreen-mode .categories-pane,
+        body.fullscreen-mode .channels-pane,
+        body.fullscreen-mode .info-pane {
+            display: none !important;
         }
-        .btn-fav {
-            background: #1a2744;
-            color: #a0b2d6;
+
+        body.fullscreen-mode .main-content {
+            height: 100vh !important;
+            width: 100vw !important;
+        }
+
+        body.fullscreen-mode .player-pane {
+            width: 100vw !important;
+            height: 100vh !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            z-index: 99999 !important;
+        }
+
+        body.fullscreen-mode .video-container {
+            width: 100vw !important;
+            height: 100vh !important;
+            background: transparent !important;
         }
     </style>
 </head>
 <body>
 
-    <!-- Header Navigation -->
     <div class="header">
-        <div class="nav-links">
-            <div class="nav-item">مسكن</div>
-            <div class="nav-item active">بث مباشر</div>
-            <div class="nav-item">افلام</div>
-            <div class="nav-item">مسلسلات</div>
+        <div class="top-nav">
+            <div class="nav-item">بث مباشر</div>
         </div>
         <div class="search-box">
-            <input type="text" placeholder="بحث...">
+            <input type="text" placeholder="بحث عن قناة..." readonly>
         </div>
-        <div class="logo">
-            <span>📺</span> REBAZ TV
-        </div>
+        <div class="app-logo">REBAZ TV</div>
     </div>
 
-    <!-- Main Content Layout -->
-    <div class="main-layout">
-        <!-- Left Side: Categories & Channels -->
-        <div class="left-side">
-            <!-- Categories -->
-            <div class="categories-col">
-                <div class="cat-item active" tabindex="0">
-                    <span>BEIN SPORTS SD</span>
-                    <span class="cat-count">24</span>
-                </div>
-                <div class="cat-item" tabindex="0">
-                    <span>ARABIC SPORTS</span>
-                    <span class="cat-count">42</span>
-                </div>
-                <div class="cat-item" tabindex="0">
-                    <span>Alwan Sports</span>
-                    <span class="cat-count">22</span>
-                </div>
-                <div class="cat-item" tabindex="0">
-                    <span>StarzPlay الدوري الايطالي</span>
-                    <span class="cat-count">13</span>
-                </div>
-                <div class="cat-item" tabindex="0">
-                    <span>SHAHID الدوري الالماني</span>
-                    <span class="cat-count">10</span>
-                </div>
-            </div>
-
-            <!-- Channels List -->
-            <div class="channels-col">
-                <div class="ch-item active" tabindex="0" onclick="playChannel('https://path/to/stream1.m3u8', '4K | Alwan Sport 1')">
-                    <span class="ch-num">149</span>
-                    <span>4K | Alwan Sport 1</span>
-                </div>
-                <div class="ch-item" tabindex="0" onclick="playChannel('https://path/to/stream2.m3u8', 'HD | Alwan Sport 1')">
-                    <span class="ch-num">150</span>
-                    <span>HD | Alwan Sport 1</span>
-                </div>
-                <div class="ch-item" tabindex="0" onclick="playChannel('https://path/to/stream3.m3u8', 'SD | Alwan Sport 1')">
-                    <span class="ch-num">151</span>
-                    <span>SD | Alwan Sport 1</span>
-                </div>
-                <div class="ch-item" tabindex="0" onclick="playChannel('https://path/to/stream4.m3u8', '4K | Alwan Sport 2')">
-                    <span class="ch-num">152</span>
-                    <span>4K | Alwan Sport 2</span>
-                </div>
+    <div class="main-content">
+        <div class="categories-pane">
+            <div class="cat-item">
+                <span>Alwan Sports</span>
+                <span style="color:#64748b;">1</span>
             </div>
         </div>
 
-        <!-- Right Side: Video Player Overlay Space & Bottom Controls -->
-        <div class="right-side">
-            <div class="player-space"></div>
-            <div class="info-panel">
-                <div class="ch-title" id="selected-ch">4K | Alwan Sport 1</div>
-                <div class="action-btns">
-                    <button class="btn btn-fav">إضافة إلى المفضلة</button>
-                    <button class="btn" onclick="toggleFull()">شاشەی پڕ (Fullscreen)</button>
-                </div>
+        <div class="channels-pane" id="chPane"></div>
+
+        <div class="player-pane" id="playerPane">
+            <div class="video-container" id="videoContainer" onclick="toggleFullScreen()"></div>
+
+            <div class="info-pane">
+                <div class="channel-title-text" id="currentChTitle">4K | Alwan Sport 1</div>
             </div>
         </div>
     </div>
 
     <script>
-        let isFull = false;
-
-        function playChannel(url, title) {
-            document.getElementById('selected-ch').innerText = title;
-            if (window.Android && typeof window.Android.playStream === 'function') {
-                window.Android.playStream(url);
+        const categories = [
+            {
+                name: "Alwan Sports",
+                channels: [
+                    { 
+                        num: "149", 
+                        name: "4K | Alwan Sport 1", 
+                        url: "http://eaglevnew.top/live/890608893636/957330157995/757045.ts" 
+                    }
+                ]
             }
-        }
+        ];
 
-        function toggleFull() {
-            isFull = !isFull;
-            if (window.Android && typeof window.Android.toggleFullScreen === 'function') {
-                window.Android.toggleFullScreen(isFull);
+        let currentUrl = "";
+        let currentName = "";
+        let isFullScreen = false;
+
+        function toggleFullScreen() {
+            isFullScreen = !isFullScreen;
+            if (isFullScreen) {
+                document.body.classList.add('fullscreen-mode');
+            } else {
+                document.body.classList.remove('fullscreen-mode');
+            }
+
+            if (window.Android && window.Android.toggleFullScreen) {
+                window.Android.toggleFullScreen(isFullScreen);
             }
         }
 
         function exitFullScreenJS() {
-            isFull = false;
+            isFullScreen = false;
+            document.body.classList.remove('fullscreen-mode');
         }
+
+        function loadChannels(catIndex) {
+            const chPane = document.getElementById('chPane');
+            chPane.innerHTML = '';
+
+            const channels = categories[catIndex].channels;
+            channels.forEach((ch, idx) => {
+                const div = document.createElement('div');
+                div.className = `ch-item ${idx === 0 ? 'active' : ''}`;
+                div.innerHTML = `<span class="ch-num">${ch.num}</span> <span>${ch.name}</span>`;
+                div.onclick = () => playStream(ch.url, ch.name, div);
+                chPane.appendChild(div);
+            });
+        }
+
+        function playStream(url, name, element = null) {
+            currentUrl = url;
+            currentName = name;
+
+            if(element) {
+                document.querySelectorAll('.ch-item').forEach(el => el.classList.remove('active'));
+                element.classList.add('active');
+            }
+            document.getElementById('currentChTitle').innerText = name;
+
+            if (window.Android && window.Android.playStream) {
+                window.Android.playStream(url);
+            }
+        }
+
+        window.onload = () => {
+            loadChannels(0);
+            setTimeout(() => {
+                if (categories[0].channels.length > 0) {
+                    playStream(categories[0].channels[0].url, categories[0].channels[0].name);
+                }
+            }, 500);
+        };
     </script>
 </body>
 </html>
