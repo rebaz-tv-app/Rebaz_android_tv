@@ -27,7 +27,6 @@ jobs:
         run: |
           mkdir -p android_project/app/src/main/java/com/rebazandroid/tv
           mkdir -p android_project/app/src/main/assets
-          mkdir -p android_project/app/src/main/res/layout
           mkdir -p android_project/app/src/main/res/values
 
           # Copy html and web files
@@ -122,7 +121,7 @@ jobs:
               <application
                   android:allowBackup="true"
                   android:label="REBAZ TV"
-                  android:supportsRtl="true"
+                  android:supportsRtl="false"
                   android:usesCleartextTraffic="true"
                   android:theme="@style/AppTheme">
 
@@ -139,7 +138,7 @@ jobs:
           </manifest>
           EOF
 
-          # Create MainActivity.java
+          # Create MainActivity.java with Forced LTR Direction Layout
           cat << 'EOF' > android_project/app/src/main/java/com/rebazandroid/tv/MainActivity.java
           package com.rebazandroid.tv;
 
@@ -150,6 +149,7 @@ jobs:
           import android.os.Handler;
           import android.os.Looper;
           import android.util.DisplayMetrics;
+          import android.view.Gravity;
           import android.view.View;
           import android.webkit.JavascriptInterface;
           import android.webkit.WebSettings;
@@ -162,11 +162,15 @@ jobs:
           import androidx.media3.common.PlaybackException;
           import androidx.media3.common.Player;
           import androidx.media3.datasource.DefaultHttpDataSource;
+          import androidx.media3.exoplayer.DefaultLoadControl;
           import androidx.media3.exoplayer.ExoPlayer;
           import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
           import androidx.media3.extractor.DefaultExtractorsFactory;
           import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory;
           import androidx.media3.ui.PlayerView;
+
+          import java.util.HashMap;
+          import java.util.Map;
 
           public class MainActivity extends Activity {
               private WebView webView;
@@ -178,8 +182,12 @@ jobs:
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
 
+                  // Force LTR layout direction globally regardless of system language
+                  getWindow().getDecorView().setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+
                   FrameLayout rootLayout = new FrameLayout(this);
                   rootLayout.setBackgroundColor(Color.parseColor("#060913"));
+                  rootLayout.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
 
                   DisplayMetrics metrics = new DisplayMetrics();
                   getWindowManager().getDefaultDisplay().getMetrics(metrics);
@@ -193,21 +201,40 @@ jobs:
                   int playerWidth = (int) (screenWidth * 0.52);
                   int playerHeight = (int) (availableHeight * 0.70);
 
+                  Map<String, String> headers = new HashMap<>();
+                  headers.put("Connection", "keep-alive");
+                  headers.put("User-Agent", "VLC/3.0.18 LibVLC/3.0.18");
+
                   DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory()
                           .setUserAgent("VLC/3.0.18 LibVLC/3.0.18")
-                          .setConnectTimeoutMs(15000)
-                          .setReadTimeoutMs(15000)
+                          .setConnectTimeoutMs(25000)
+                          .setReadTimeoutMs(25000)
+                          .setDefaultRequestProperties(headers)
                           .setAllowCrossProtocolRedirects(true);
 
                   DefaultExtractorsFactory extractorsFactory = new DefaultExtractorsFactory()
                           .setConstantBitrateSeekingEnabled(true)
-                          .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES);
+                          .setTsExtractorFlags(
+                                  DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES |
+                                  DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS
+                          );
+
+                  DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
+                          .setBufferDurationsMs(
+                                  2000,
+                                  60000,
+                                  1500,
+                                  2000
+                          )
+                          .setPrioritizeTimeOverSizeThresholds(true)
+                          .build();
 
                   DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(this, extractorsFactory)
                           .setDataSourceFactory(dataSourceFactory);
 
                   player = new ExoPlayer.Builder(this)
                           .setMediaSourceFactory(mediaSourceFactory)
+                          .setLoadControl(loadControl)
                           .build();
 
                   playerView = new PlayerView(this);
@@ -215,8 +242,10 @@ jobs:
                   playerView.setUseController(false);
                   playerView.setShutterBackgroundColor(Color.TRANSPARENT);
                   playerView.setKeepContentOnPlayerReset(true);
+                  playerView.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
 
                   FrameLayout.LayoutParams playerParams = new FrameLayout.LayoutParams(playerWidth, playerHeight);
+                  playerParams.gravity = Gravity.TOP | Gravity.LEFT;
                   playerParams.topMargin = headerHeight;
                   playerParams.leftMargin = 0;
                   playerView.setLayoutParams(playerParams);
@@ -224,6 +253,7 @@ jobs:
                   webView = new WebView(this);
                   webView.setBackgroundColor(Color.TRANSPARENT);
                   webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+                  webView.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
 
                   WebSettings webSettings = webView.getSettings();
                   webSettings.setJavaScriptEnabled(true);
@@ -252,7 +282,7 @@ jobs:
                                       playStreamInternal(currentUrl);
                                   }
                               }
-                          }, 3000);
+                          }, 1500);
                       }
                   });
 
