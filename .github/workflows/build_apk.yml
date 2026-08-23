@@ -80,8 +80,8 @@ jobs:
                   applicationId "com.rebazandroid.tv"
                   minSdk 21
                   targetSdk 34
-                  versionCode 3
-                  versionName "3.0"
+                  versionCode 4
+                  versionName "4.0"
               }
 
               compileOptions {
@@ -185,7 +185,6 @@ jobs:
 
                   getWindow().getDecorView().setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
 
-                  // Main Root Layout holding both Player and WebView
                   final FrameLayout rootLayout = new FrameLayout(this);
                   rootLayout.setBackgroundColor(Color.parseColor("#060913"));
                   rootLayout.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
@@ -228,7 +227,6 @@ jobs:
                   playerView.setKeepContentOnPlayerReset(true);
                   playerView.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
 
-                  // Initially match the web view's video container dimensions perfectly
                   DisplayMetrics metrics = new DisplayMetrics();
                   getWindowManager().getDefaultDisplay().getMetrics(metrics);
                   int screenWidth = metrics.widthPixels;
@@ -313,7 +311,6 @@ jobs:
                       public void run() {
                           isFullScreen = full;
                           if (isFullScreen) {
-                              // Bring player to front and make it absolute match_parent (true fullscreen, hiding webview underneath or filling screen)
                               playerView.bringToFront();
                               FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
                                       FrameLayout.LayoutParams.MATCH_PARENT,
@@ -322,7 +319,6 @@ jobs:
                               params.setMargins(0, 0, 0, 0);
                               playerView.setLayoutParams(params);
                           } else {
-                              // Put webview back on top so UI clicks work, restore player size
                               webView.bringToFront();
                               DisplayMetrics metrics = new DisplayMetrics();
                               getWindowManager().getDefaultDisplay().getMetrics(metrics);
@@ -349,7 +345,7 @@ jobs:
 
               public class WebAppInterface {
                   @JavascriptInterface
-                  public void playStream(finalString url) {
+                  public void playStream(final String url) {
                       new Handler(Looper.getMainLooper()).post(new Runnable() {
                           @Override
                           public void run() {
