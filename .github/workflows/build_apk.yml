@@ -80,8 +80,8 @@ jobs:
                   applicationId "com.rebazandroid.tv"
                   minSdk 21
                   targetSdk 34
-                  versionCode 6
-                  versionName "6.0"
+                  versionCode 7
+                  versionName "7.0"
               }
 
               compileOptions {
@@ -176,7 +176,7 @@ jobs:
                   super.onCreate(savedInstanceState);
 
                   FrameLayout rootLayout = new FrameLayout(this);
-                  rootLayout.setBackgroundColor(Color.parseColor("#060913"));
+                  rootLayout.setBackgroundColor(Color.parseColor("#050811"));
 
                   player = new ExoPlayer.Builder(this).build();
                   playerView = new PlayerView(this);
@@ -188,16 +188,17 @@ jobs:
                   getWindowManager().getDefaultDisplay().getMetrics(metrics);
                   int screenWidth = metrics.widthPixels;
                   int screenHeight = metrics.heightPixels;
-                  int headerHeight = (int) (60 * metrics.density);
+                  int headerHeight = (int) (48 * metrics.density);
                   int availableHeight = screenHeight - headerHeight;
 
-                  int initialW = (int) (screenWidth * 0.52);
-                  int initialH = (int) (availableHeight * 0.70);
+                  // Player on TOP RIGHT (50% width, 60% height)
+                  int initialW = (int) (screenWidth * 0.50);
+                  int initialH = (int) (availableHeight * 0.62);
 
                   FrameLayout.LayoutParams playerParams = new FrameLayout.LayoutParams(initialW, initialH);
-                  playerParams.gravity = Gravity.TOP | Gravity.LEFT;
+                  playerParams.gravity = Gravity.TOP | Gravity.RIGHT;
                   playerParams.topMargin = headerHeight;
-                  playerParams.leftMargin = 0;
+                  playerParams.rightMargin = 0;
                   playerView.setLayoutParams(playerParams);
                   playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FILL);
 
@@ -270,196 +271,16 @@ jobs:
                               getWindowManager().getDefaultDisplay().getMetrics(metrics);
                               int screenWidth = metrics.widthPixels;
                               int screenHeight = metrics.heightPixels;
-                              int headerHeight = (int) (60 * metrics.density);
+                              int headerHeight = (int) (48 * metrics.density);
                               int availableHeight = screenHeight - headerHeight;
 
-                              int pWidth = (int) (screenWidth * 0.52);
-                              int pHeight = (int) (availableHeight * 0.70);
+                              int pWidth = (int) (screenWidth * 0.50);
+                              int pHeight = (int) (availableHeight * 0.62);
 
                               FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(pWidth, pHeight);
-                              params.gravity = Gravity.TOP | Gravity.LEFT;
+                              params.gravity = Gravity.TOP | Gravity.RIGHT;
                               params.topMargin = headerHeight;
-                              params.leftMargin = 0;
-                              playerView.setLayoutParams(params);
-                          }
-                          playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FILL);
-                          playerView.requestLayout();
-                      }
-                  });
-              }
-
-              public class WebAppInterface {
-                  @JavascriptInterface
-                  public void playStream(final String url) {
-                      new Handler(Looper.getMainLooper()).post(new Runnable() {
-                          @Override
-                          public void run() {
-                              playStreamInternal(url);
-                          }
-                      });
-                  }
-
-                  @JavascriptInterface
-                  public void toggleFullScreen(final boolean full) {
-                      applyFullScreenState(full);
-                  }
-              }
-
-              @Override
-              protected void onDestroy() {
-                  super.onDestroy();
-                  if (player != null) {
-                      player.release();
-                      player = null;
-                  }
-              }
-
-              @Override
-              protected onStop() { // wait, will fix super.onStop()
-          EOF
-
-          # Fixing Java file safely
-          cat << 'EOF' > android_project/app/src/main/java/com/rebazandroid/tv/MainActivity.java
-          package com.rebazandroid.tv;
-
-          import android.app.Activity;
-          import android.graphics.Color;
-          import android.net.Uri;
-          import android.os.Bundle;
-          import android.os.Handler;
-          import android.os.Looper;
-          import android.util.DisplayMetrics;
-          import android.view.Gravity;
-          import android.view.View;
-          import android.webkit.JavascriptInterface;
-          import android.webkit.WebSettings;
-          import android.webkit.WebView;
-          import android.webkit.WebViewClient;
-          import android.widget.FrameLayout;
-
-          import androidx.media3.common.MediaItem;
-          import androidx.media3.common.PlaybackException;
-          import androidx.media3.common.Player;
-          import androidx.media3.exoplayer.ExoPlayer;
-          import androidx.media3.ui.AspectRatioFrameLayout;
-          import androidx.media3.ui.PlayerView;
-
-          public class MainActivity extends Activity {
-              private WebView webView;
-              private ExoPlayer player;
-              private PlayerView playerView;
-              private String currentUrl = "";
-              private boolean isFullScreen = false;
-
-              @Override
-              protected void onCreate(Bundle savedInstanceState) {
-                  super.onCreate(savedInstanceState);
-
-                  FrameLayout rootLayout = new FrameLayout(this);
-                  rootLayout.setBackgroundColor(Color.parseColor("#060913"));
-
-                  player = new ExoPlayer.Builder(this).build();
-                  playerView = new PlayerView(this);
-                  playerView.setPlayer(player);
-                  playerView.setUseController(false);
-                  playerView.setShutterBackgroundColor(Color.TRANSPARENT);
-
-                  DisplayMetrics metrics = new DisplayMetrics();
-                  getWindowManager().getDefaultDisplay().getMetrics(metrics);
-                  int screenWidth = metrics.widthPixels;
-                  int screenHeight = metrics.heightPixels;
-                  int headerHeight = (int) (60 * metrics.density);
-                  int availableHeight = screenHeight - headerHeight;
-
-                  int initialW = (int) (screenWidth * 0.52);
-                  int initialH = (int) (availableHeight * 0.70);
-
-                  FrameLayout.LayoutParams playerParams = new FrameLayout.LayoutParams(initialW, initialH);
-                  playerParams.gravity = Gravity.TOP | Gravity.LEFT;
-                  playerParams.topMargin = headerHeight;
-                  playerParams.leftMargin = 0;
-                  playerView.setLayoutParams(playerParams);
-                  playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FILL);
-
-                  webView = new WebView(this);
-                  webView.setBackgroundColor(Color.TRANSPARENT);
-                  webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-
-                  WebSettings webSettings = webView.getSettings();
-                  webSettings.setJavaScriptEnabled(true);
-                  webSettings.setDomStorageEnabled(true);
-                  webSettings.setAllowFileAccess(true);
-                  webSettings.setAllowFileAccessFromFileURLs(true);
-                  webSettings.setAllowUniversalAccessFromFileURLs(true);
-                  webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-
-                  webView.addJavascriptInterface(new WebAppInterface(), "Android");
-                  webView.setWebViewClient(new WebViewClient());
-
-                  rootLayout.addView(playerView);
-                  rootLayout.addView(webView);
-                  setContentView(rootLayout);
-
-                  player.addListener(new Player.Listener() {
-                      @Override
-                      public void onPlayerError(PlaybackException error) {
-                          reconnectStream();
-                      }
-                  });
-
-                  webView.loadUrl("file:///android_asset/index.html");
-              }
-
-              private void reconnectStream() {
-                  new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-                      @Override
-                      public void run() {
-                          if (player != null && currentUrl != null && !currentUrl.isEmpty()) {
-                              playStreamInternal(currentUrl);
-                          }
-                      }
-                  }, 2000);
-              }
-
-              private void playStreamInternal(String url) {
-                  if (player != null && url != null && !url.isEmpty()) {
-                      currentUrl = url;
-                      MediaItem mediaItem = MediaItem.fromUri(Uri.parse(url));
-                      player.setMediaItem(mediaItem);
-                      player.prepare();
-                      player.setPlayWhenReady(true);
-                  }
-              }
-
-              private void applyFullScreenState(final boolean full) {
-                  new Handler(Looper.getMainLooper()).post(new Runnable() {
-                      @Override
-                      public void run() {
-                          isFullScreen = full;
-                          if (isFullScreen) {
-                              playerView.bringToFront();
-                              FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-                                      FrameLayout.LayoutParams.MATCH_PARENT,
-                                      FrameLayout.LayoutParams.MATCH_PARENT
-                              );
-                              params.setMargins(0, 0, 0, 0);
-                              playerView.setLayoutParams(params);
-                          } else {
-                              webView.bringToFront();
-                              DisplayMetrics metrics = new DisplayMetrics();
-                              getWindowManager().getDefaultDisplay().getMetrics(metrics);
-                              int screenWidth = metrics.widthPixels;
-                              int screenHeight = metrics.heightPixels;
-                              int headerHeight = (int) (60 * metrics.density);
-                              int availableHeight = screenHeight - headerHeight;
-
-                              int pWidth = (int) (screenWidth * 0.52);
-                              int pHeight = (int) (availableHeight * 0.70);
-
-                              FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(pWidth, pHeight);
-                              params.gravity = Gravity.TOP | Gravity.LEFT;
-                              params.topMargin = headerHeight;
-                              params.leftMargin = 0;
+                              params.rightMargin = 0;
                               playerView.setLayoutParams(params);
                           }
                           playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FILL);
