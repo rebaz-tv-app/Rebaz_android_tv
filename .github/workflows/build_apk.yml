@@ -41,7 +41,7 @@ jobs:
           org.gradle.caching=true
           EOF
 
-          # Create settings.gradle with proper repositories
+          # Create settings.gradle with explicit Google Maven URL
           cat << 'EOF' > android_project/settings.gradle
           pluginManagement {
               repositories {
@@ -51,9 +51,10 @@ jobs:
               }
           }
           dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
               repositories {
                   google()
+                  maven { url 'https://maven.google.com' }
                   mavenCentral()
               }
           }
@@ -82,8 +83,8 @@ jobs:
                   applicationId "com.rebazandroid.tv"
                   minSdk 21
                   targetSdk 34
-                  versionCode 16
-                  versionName "16.0"
+                  versionCode 17
+                  versionName "17.0"
               }
 
               compileOptions {
@@ -299,7 +300,7 @@ jobs:
               }
 
               @Override
-              public void onBackPressed() {
+              protected void onBackPressed() {
                   if (webView != null && webView.canGoBack()) {
                       webView.goBack();
                   } else {
