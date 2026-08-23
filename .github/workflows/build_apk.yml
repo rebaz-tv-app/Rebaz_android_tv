@@ -37,9 +37,11 @@ jobs:
           cat << 'EOF' > android_project/gradle.properties
           android.useAndroidX=true
           org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          org.gradle.parallel=true
+          org.gradle.caching=true
           EOF
 
-          # Create settings.gradle
+          # Create settings.gradle with proper repositories
           cat << 'EOF' > android_project/settings.gradle
           pluginManagement {
               repositories {
@@ -49,7 +51,7 @@ jobs:
               }
           }
           dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
               repositories {
                   google()
                   mavenCentral()
@@ -80,8 +82,8 @@ jobs:
                   applicationId "com.rebazandroid.tv"
                   minSdk 21
                   targetSdk 34
-                  versionCode 15
-                  versionName "15.0"
+                  versionCode 16
+                  versionName "16.0"
               }
 
               compileOptions {
@@ -138,7 +140,7 @@ jobs:
           </manifest>
           EOF
 
-          # Create MainActivity.java with Internal ExoPlayer and WebView Hybrid layout
+          # Create MainActivity.java
           cat << 'EOF' > android_project/app/src/main/java/com/rebazandroid/tv/MainActivity.java
           package com.rebazandroid.tv;
 
@@ -171,7 +173,6 @@ jobs:
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
 
-                  // دروستکردنی ڕوکاری سەرەکی بە شێوازی پەڕەی ئاسۆیی (RTL)
                   LinearLayout rootLayout = new LinearLayout(this);
                   rootLayout.setOrientation(LinearLayout.HORIZONTAL);
                   rootLayout.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
@@ -179,7 +180,6 @@ jobs:
                   rootLayout.setLayoutParams(new ViewGroup.LayoutParams(
                           ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-                  // بەشی ڕاست: WebView بۆ لیست و کەناڵەکان
                   webView = new WebView(this);
                   LinearLayout.LayoutParams webParams = new LinearLayout.LayoutParams(
                           0, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f);
@@ -195,7 +195,6 @@ jobs:
                   webView.addJavascriptInterface(new WebAppInterface(), "Android");
                   webView.setWebViewClient(new WebViewClient());
 
-                  // بەشی چەپ: پلەیەری ناوخۆیی (ExoPlayer) و پانێڵی زانیاری
                   LinearLayout leftPanel = new LinearLayout(this);
                   leftPanel.setOrientation(LinearLayout.VERTICAL);
                   LinearLayout.LayoutParams leftParams = new LinearLayout.LayoutParams(
@@ -203,14 +202,12 @@ jobs:
                   leftPanel.setLayoutParams(leftParams);
                   leftPanel.setBackgroundColor(Color.parseColor("#050811"));
 
-                  // دروستکردنی ExoPlayer View
                   playerView = new PlayerView(this);
                   LinearLayout.LayoutParams playerParams = new LinearLayout.LayoutParams(
                           ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.62f);
                   playerView.setLayoutParams(playerParams);
                   playerView.setBackgroundColor(Color.BLACK);
 
-                  // دروستکردنی پانێڵی خوارەوەی پلەیەر (ناونیشان و دوگمەکان)
                   LinearLayout infoPanel = new LinearLayout(this);
                   infoPanel.setOrientation(LinearLayout.VERTICAL);
                   LinearLayout.LayoutParams infoParams = new LinearLayout.LayoutParams(
@@ -226,7 +223,6 @@ jobs:
                   titleTextView.setTypeface(null, android.graphics.Typeface.BOLD);
                   infoPanel.addView(titleTextView);
 
-                  // دوگمەکانی خوارەوە
                   LinearLayout btnLayout = new LinearLayout(this);
                   btnLayout.setOrientation(LinearLayout.HORIZONTAL);
                   btnLayout.setGravity(Gravity.END);
@@ -250,34 +246,22 @@ jobs:
                           ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
                   fullParams.rightMargin = 15;
                   btnFull.setLayoutParams(fullParams);
-                  btnFull.setOnClickListener(new View.OnClickListener() {
-                      @Override
-                      public void onClick(View v) {
-                          if (player != null) {
-                              // دەتوانێت شاشەی پڕ بکات یان پلەیەر گەورە بکات
-                          }
-                      }
-                  });
 
                   btnLayout.addView(btnFull);
                   btnLayout.addView(btnFav);
                   infoPanel.addView(btnLayout);
 
-                  // کۆکردنەوەی بەشەکان لە چەپ
                   leftPanel.addView(playerView);
                   leftPanel.addView(infoPanel);
 
-                  // زیادکردنی هەردوو بەش بۆ ڕوکاری سەرەکی
                   rootLayout.addView(webView);
                   rootLayout.addView(leftPanel);
 
                   setContentView(rootLayout);
 
-                  // ڕێکخستنی ExoPlayer
                   player = new ExoPlayer.Builder(this).build();
                   playerView.setPlayer(player);
 
-                  // بارکردنی پەڕەی HTML
                   webView.loadUrl("file:///android_asset/index.html");
               }
 
