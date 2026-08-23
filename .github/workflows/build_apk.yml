@@ -85,8 +85,8 @@ jobs:
                   applicationId "com.rebazandroid.tv"
                   minSdk 21
                   targetSdk 34
-                  versionCode 20
-                  versionName "20.0"
+                  versionCode 21
+                  versionName "21.0"
               }
 
               compileOptions {
@@ -141,148 +141,46 @@ jobs:
           </manifest>
           EOF
 
-          # Create MainActivity.java
+          # Create MainActivity.java (Pure Fullscreen WebView)
           cat << 'EOF' > android_project/app/src/main/java/com/rebazandroid/tv/MainActivity.java
           package com.rebazandroid.tv;
 
           import android.app.Activity;
-          import android.graphics.Color;
-          import android.net.Uri;
           import android.os.Bundle;
-          import android.view.Gravity;
-          import android.view.View;
-          import android.view.ViewGroup;
-          import android.webkit.JavascriptInterface;
+          import android.webkit.WebChromeClient;
           import android.webkit.WebSettings;
           import android.webkit.WebView;
           import android.webkit.WebViewClient;
-          import android.widget.Button;
-          import android.widget.LinearLayout;
-          import android.widget.MediaController;
-          import android.widget.TextView;
-          import android.widget.VideoView;
 
           public class MainActivity extends Activity {
               private WebView webView;
-              private VideoView videoView;
-              private TextView titleTextView;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
 
-                  LinearLayout rootLayout = new LinearLayout(this);
-                  rootLayout.setOrientation(LinearLayout.HORIZONTAL);
-                  rootLayout.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-                  rootLayout.setBackgroundColor(Color.parseColor("#050811"));
-                  rootLayout.setLayoutParams(new ViewGroup.LayoutParams(
-                          ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
                   webView = new WebView(this);
-                  LinearLayout.LayoutParams webParams = new LinearLayout.LayoutParams(
-                          0, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f);
-                  webView.setLayoutParams(webParams);
-                  webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+                  webView.setWebViewClient(new WebViewClient());
+                  webView.setWebChromeClient(new WebChromeClient());
 
                   WebSettings webSettings = webView.getSettings();
                   webSettings.setJavaScriptEnabled(true);
                   webSettings.setDomStorageEnabled(true);
                   webSettings.setAllowFileAccess(true);
+                  webSettings.setAllowContentAccess(true);
+                  webSettings.setMediaPlaybackRequiresUserGesture(false);
                   webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
-                  webView.addJavascriptInterface(new WebAppInterface(), "Android");
-                  webView.setWebViewClient(new WebViewClient());
-
-                  LinearLayout leftPanel = new LinearLayout(this);
-                  leftPanel.setOrientation(LinearLayout.VERTICAL);
-                  LinearLayout.LayoutParams leftParams = new LinearLayout.LayoutParams(
-                          0, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f);
-                  leftPanel.setLayoutParams(leftParams);
-                  leftPanel.setBackgroundColor(Color.parseColor("#050811"));
-
-                  videoView = new VideoView(this);
-                  LinearLayout.LayoutParams playerParams = new LinearLayout.LayoutParams(
-                          ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.62f);
-                  videoView.setLayoutParams(playerParams);
-                  videoView.setBackgroundColor(Color.BLACK);
-
-                  MediaController mediaController = new MediaController(this);
-                  videoView.setMediaController(mediaController);
-
-                  LinearLayout infoPanel = new LinearLayout(this);
-                  infoPanel.setOrientation(LinearLayout.VERTICAL);
-                  LinearLayout.LayoutParams infoParams = new LinearLayout.LayoutParams(
-                          ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.38f);
-                  infoPanel.setLayoutParams(infoParams);
-                  infoPanel.setPadding(30, 20, 30, 20);
-                  infoPanel.setBackgroundColor(Color.parseColor("#050811"));
-
-                  titleTextView = new TextView(this);
-                  titleTextView.setText("Alwan Sport 1 4K");
-                  titleTextView.setTextColor(Color.WHITE);
-                  titleTextView.setTextSize(18);
-                  titleTextView.setTypeface(null, android.graphics.Typeface.BOLD);
-                  infoPanel.addView(titleTextView);
-
-                  LinearLayout btnLayout = new LinearLayout(this);
-                  btnLayout.setOrientation(LinearLayout.HORIZONTAL);
-                  btnLayout.setGravity(Gravity.END);
-                  LinearLayout.LayoutParams btnLayoutParams = new LinearLayout.LayoutParams(
-                      ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                  btnLayoutParams.topMargin = 15;
-                  btnLayout.setLayoutParams(btnLayoutParams);
-
-                  Button btnFav = new Button(this);
-                  btnFav.setText("إضافة إلى المفضلة");
-                  btnFav.setBackgroundColor(Color.parseColor("#1a2744"));
-                  btnFav.setTextColor(Color.parseColor("#a0b2d6"));
-                  btnFav.setPadding(20, 10, 20, 10);
-
-                  Button btnFull = new Button(this);
-                  btnFull.setText("شاشەی پڕ (Fullscreen)");
-                  btnFull.setBackgroundColor(Color.parseColor("#0072ce"));
-                  btnFull.setTextColor(Color.WHITE);
-                  btnFull.setPadding(20, 10, 20, 10);
-                  LinearLayout.LayoutParams fullParams = new LinearLayout.LayoutParams(
-                      ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                  fullParams.rightMargin = 15;
-                  btnFull.setLayoutParams(fullParams);
-
-                  btnLayout.addView(btnFull);
-                  btnLayout.addView(btnFav);
-                  infoPanel.addView(btnLayout);
-
-                  leftPanel.addView(videoView);
-                  leftPanel.addView(infoPanel);
-
-                  rootLayout.addView(webView);
-                  rootLayout.addView(leftPanel);
-
-                  setContentView(rootLayout);
-
+                  setContentView(webView);
                   webView.loadUrl("file:///android_asset/index.html");
               }
 
-              public class WebAppInterface {
-                  @JavascriptInterface
-                  public void playStream(final String url, final String title) {
-                      runOnUiThread(new Runnable() {
-                          @Override
-                          public void run() {
-                              try {
-                                  if (videoView != null) {
-                                      videoView.setVideoURI(Uri.parse(url));
-                                      videoView.requestFocus();
-                                      videoView.start();
-                                  }
-                                  if (titleTextView != null) {
-                                      titleTextView.setText(title);
-                                  }
-                              } catch (Exception e) {
-                                  e.printStackTrace();
-                              }
-                          }
-                      });
+              @Override
+              public void onBackPressed() {
+                  if (webView != null && webView.canGoBack()) {
+                      webView.goBack();
+                  } else {
+                      super.onBackPressed();
                   }
               }
           }
