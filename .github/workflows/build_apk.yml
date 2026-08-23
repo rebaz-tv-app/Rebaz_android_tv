@@ -25,7 +25,7 @@ jobs:
     - name: Setup Android Project for REBAZ TV
       run: |
         mkdir -p app/src/main/assets
-        mkdir -p app/src/main/java/com/rebaz/rebaztv
+        mkdir -p app/src/main/java/com/rebaz/tv
         mkdir -p app/src/main/res/values
         mkdir -p app/src/main/res/layout
         mkdir -p app/src/main/res/drawable
@@ -67,10 +67,10 @@ jobs:
         cat << 'EOF' > app/build.gradle
         plugins { id 'com.android.application' }
         android {
-            namespace 'com.rebaz.rebaztv'
+            namespace 'com.rebaz.tv'
             compileSdk 34
             defaultConfig {
-                applicationId "com.rebaz.rebaztv"
+                applicationId "com.rebaz.tv"
                 minSdk 21
                 targetSdk 34
                 versionCode 1
@@ -333,8 +333,8 @@ jobs:
         ./gradlew assembleDebug --stacktrace
         mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/rebaz.tv.apk
 
-    - name: Upload APK Artifact
+    - name: Upload Finished REBAZ TV APK
       uses: actions/upload-artifact@v4
       with:
-        name: Rebaz-Android-Tv-APK
-        path: app/build/outputs/apk/debug/Rebaz.Android.Tv.apk
+        name: REBAZ-TV-APK
+        path: app/build/outputs/apk/debug/rebaz.android.tv.apk
