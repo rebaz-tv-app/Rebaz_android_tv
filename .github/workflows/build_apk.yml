@@ -37,11 +37,9 @@ jobs:
           cat << 'EOF' > android_project/gradle.properties
           android.useAndroidX=true
           org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
-          org.gradle.parallel=true
-          org.gradle.caching=true
           EOF
 
-          # Create settings.gradle with explicit Google Maven URL
+          # Create settings.gradle
           cat << 'EOF' > android_project/settings.gradle
           pluginManagement {
               repositories {
@@ -54,7 +52,6 @@ jobs:
               repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
               repositories {
                   google()
-                  maven { url 'https://maven.google.com' }
                   mavenCentral()
               }
           }
@@ -69,7 +66,7 @@ jobs:
           }
           EOF
 
-          # Create App build.gradle with ExoPlayer
+          # Create App build.gradle (No external dependencies needed)
           cat << 'EOF' > android_project/app/build.gradle
           plugins {
               id 'com.android.application'
@@ -83,8 +80,8 @@ jobs:
                   applicationId "com.rebazandroid.tv"
                   minSdk 21
                   targetSdk 34
-                  versionCode 17
-                  versionName "17.0"
+                  versionCode 18
+                  versionName "18.0"
               }
 
               compileOptions {
@@ -95,8 +92,6 @@ jobs:
 
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'androidx.media3:media3-exoplayer:1.2.1'
-              implementation 'androidx.media3:media3-exoplayer-ui:1.2.1'
           }
           EOF
 
@@ -141,7 +136,7 @@ jobs:
           </manifest>
           EOF
 
-          # Create MainActivity.java
+          # Create MainActivity.java with Native VideoView
           cat << 'EOF' > android_project/app/src/main/java/com/rebazandroid/tv/MainActivity.java
           package com.rebazandroid.tv;
 
@@ -158,16 +153,13 @@ jobs:
           import android.webkit.WebViewClient;
           import android.widget.Button;
           import android.widget.LinearLayout;
+          import android.widget.MediaController;
           import android.widget.TextView;
-
-          import androidx.media3.common.MediaItem;
-          import androidx.media3.exoplayer.ExoPlayer;
-          import androidx.media3.ui.PlayerView;
+          import android.widget.VideoView;
 
           public class MainActivity extends Activity {
               private WebView webView;
-              private ExoPlayer player;
-              private PlayerView playerView;
+              private VideoView videoView;
               private TextView titleTextView;
 
               @Override
@@ -203,11 +195,14 @@ jobs:
                   leftPanel.setLayoutParams(leftParams);
                   leftPanel.setBackgroundColor(Color.parseColor("#050811"));
 
-                  playerView = new PlayerView(this);
+                  videoView = new VideoView(this);
                   LinearLayout.LayoutParams playerParams = new LinearLayout.LayoutParams(
                           ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.62f);
-                  playerView.setLayoutParams(playerParams);
-                  playerView.setBackgroundColor(Color.BLACK);
+                  videoView.setLayoutParams(playerParams);
+                  videoView.setBackgroundColor(Color.BLACK);
+
+                  MediaController mediaController = new MediaController(this);
+                  videoView.setMediaController(mediaController);
 
                   LinearLayout infoPanel = new LinearLayout(this);
                   infoPanel.setOrientation(LinearLayout.VERTICAL);
@@ -252,16 +247,13 @@ jobs:
                   btnLayout.addView(btnFav);
                   infoPanel.addView(btnLayout);
 
-                  leftPanel.addView(playerView);
+                  leftPanel.addView(videoView);
                   leftPanel.addView(infoPanel);
 
                   rootLayout.addView(webView);
                   rootLayout.addView(leftPanel);
 
                   setContentView(rootLayout);
-
-                  player = new ExoPlayer.Builder(this).build();
-                  playerView.setPlayer(player);
 
                   webView.loadUrl("file:///android_asset/index.html");
               }
@@ -273,11 +265,10 @@ jobs:
                           @Override
                           public void run() {
                               try {
-                                  if (player != null) {
-                                      MediaItem mediaItem = MediaItem.fromUri(Uri.parse(url));
-                                      player.setMediaItem(mediaItem);
-                                      player.prepare();
-                                      player.play();
+                                  if (videoView != null) {
+                                      videoView.setVideoURI(Uri.parse(url));
+                                      videoView.requestFocus();
+                                      videoView.start();
                                   }
                                   if (titleTextView != null) {
                                       titleTextView.setText(title);
@@ -287,15 +278,6 @@ jobs:
                               }
                           }
                       });
-                  }
-              }
-
-              @Override
-              protected void onDestroy() {
-                  super.onDestroy();
-                  if (player != null) {
-                      player.release();
-                      player = null;
                   }
               }
 
