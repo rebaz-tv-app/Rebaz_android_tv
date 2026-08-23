@@ -34,11 +34,7 @@ jobs:
           mkdir -p android_project/app/src/main/assets
           mkdir -p android_project/app/src/main/res/values
 
-          # Copy assets
-          cp index.html android_project/app/src/main/assets/ 2>/dev/null || true
-          cp -r *.css *.js *.png *.jpg *.jpeg *.ico android_project/app/src/main/assets/ 2>/dev/null || true
-
-          # Inject index.html with mpegts.js engine for direct .ts playback
+          # Inject index.html with Universal Hybrid Engine (HLS.js + mpegts.js)
           cat << 'EOF' > android_project/app/src/main/assets/index.html
           <!DOCTYPE html>
           <html lang="ar" dir="rtl">
@@ -46,6 +42,8 @@ jobs:
               <meta charset="UTF-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
               <title>REBAZ TV</title>
+              <!-- Both HLS.js and mpegts.js included for total IPTV stream support -->
+              <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
               <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
               <style>
                   * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
@@ -117,20 +115,20 @@ jobs:
                       <div class="categories-col">
                           <div class="cat-item active" tabindex="0">
                               <span>وەرزشی</span>
-                              <span class="cat-count">1</span>
+                              <span class="cat-count">2</span>
                           </div>
                       </div>
                       <div class="channels-col">
-                          <div class="ch-item active" tabindex="0" onclick="playChannel('http://mhiptv.com:8080/live/hk030/6985423976/212760.ts', 'Alwan Sport 1 4K')">
+                          <div class="ch-item active" tabindex="0" onclick="playChannel('http://mhiptv.com:8080/live/hk030/6985423976/212760.ts', 'Alwan Sport 1 (.TS)')">
                               <span class="ch-num">1</span>
-                              <span>Alwan Sport 1 4K</span>
+                              <span>Alwan Sport 1 (.TS)</span>
                           </div>
                       </div>
                   </div>
 
                   <div class="right-side">
                       <div class="player-space">
-                          <video id="mainPlayer" autoplay controls></video>
+                          <video id="mainPlayer" autoplay controls playsinline></video>
                       </div>
                       <div class="info-panel">
                           <div class="ch-title" id="selected-ch">Alwan Sport 1 4K</div>
@@ -143,7 +141,8 @@ jobs:
               </div>
 
               <script>
-                  let player = null;
+                  let currentHls = null;
+                  let currentMpegts = null;
 
                   window.onload = function() {
                       setTimeout(() => {
@@ -151,17 +150,28 @@ jobs:
                       }, 500);
                   };
 
+                  function destroyPlayers() {
+                      if (currentHls) {
+                          currentHls.destroy();
+                          currentHls = null;
+                      }
+                      if (currentMpegts) {
+                          currentMpegts.destroy();
+                          currentMpegts = null;
+                      }
+                  }
+
                   function playChannel(url, title) {
                       document.getElementById('selected-ch').innerText = title;
                       let videoElement = document.getElementById('mainPlayer');
 
-                      if (player) {
-                          player.destroy();
-                          player = null;
-                      }
+                      destroyPlayers();
 
-                      if (mpegts.isSupported()) {
-                          player = mpegts.createPlayer({
+                      let cleanUrl = url.toLowerCase().split('?')[0];
+
+                      // 1. Direct MPEG-TS Stream (.ts)
+                      if (cleanUrl.endsWith('.ts') && mpegts.isSupported()) {
+                          currentMpegts = mpegts.createPlayer({
                               type: 'mse',
                               isLive: true,
                               url: url
@@ -170,12 +180,32 @@ jobs:
                               lazyLoadMaxDuration: 3 * 60,
                               seekType: 'range'
                           });
-                          player.attachMediaElement(videoElement);
-                          player.load();
-                          player.play().catch(e => console.log("Error playing stream:", e));
-                      } else {
+                          currentMpegts.attachMediaElement(videoElement);
+                          currentMpegts.load();
+                          currentMpegts.play().catch(e => console.log("MPEGTS Error:", e));
+                      } 
+                      // 2. HLS Stream (.m3u8)
+                      else if (Hls.isSupported()) {
+                          currentHls = new Hls({
+                              enableWorker: true,
+                              lowLatencyMode: true
+                          });
+                          currentHls.loadSource(url);
+                          currentHls.attachMedia(videoElement);
+                          currentHls.on(Hls.Events.MANIFEST_PARSED, function() {
+                              videoElement.play().catch(e => console.log("HLS Play Error:", e));
+                          });
+                          currentHls.on(Hls.Events.ERROR, function(event, data) {
+                              if (data.fatal) {
+                                  videoElement.src = url;
+                                  videoElement.play().catch(e => console.log("Fallback Play Error:", e));
+                              }
+                          });
+                      } 
+                      // 3. Standard HTML5 Native Fallback
+                      else {
                           videoElement.src = url;
-                          videoElement.play().catch(e => console.log("Direct play error:", e));
+                          videoElement.play().catch(e => console.log("Direct Native Error:", e));
                       }
                   }
 
@@ -238,8 +268,8 @@ jobs:
                   applicationId "com.rebazandroid.tv"
                   minSdk 21
                   targetSdk 34
-                  versionCode 23
-                  versionName "23.0"
+                  versionCode 24
+                  versionName "24.0"
               }
 
               compileOptions {
@@ -294,12 +324,14 @@ jobs:
           </manifest>
           EOF
 
-          # Create MainActivity.java with Universal CORS and Custom User-Agent
+          # Create MainActivity.java with Bypass for SSL Errors & Custom VLC User-Agent
           cat << 'EOF' > android_project/app/src/main/java/com/rebazandroid/tv/MainActivity.java
           package com.rebazandroid.tv;
 
           import android.app.Activity;
+          import android.net.http.SslError;
           import android.os.Bundle;
+          import android.webkit.SslErrorHandler;
           import android.webkit.WebChromeClient;
           import android.webkit.WebSettings;
           import android.webkit.WebView;
@@ -313,7 +345,13 @@ jobs:
                   super.onCreate(savedInstanceState);
 
                   webView = new WebView(this);
-                  webView.setWebViewClient(new WebViewClient());
+                  webView.setWebViewClient(new WebViewClient() {
+                      @Override
+                      public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                          // Allow IPTV streams with self-signed or invalid SSL certificates
+                          handler.proceed();
+                      }
+                  });
                   webView.setWebChromeClient(new WebChromeClient());
 
                   WebSettings webSettings = webView.getSettings();
