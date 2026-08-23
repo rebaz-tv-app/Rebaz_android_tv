@@ -76,7 +76,7 @@
             width: 100vw;
         }
 
-        /* Left Side: Categories & Channels (50% width) */
+        /* Left Side: Categories & Channels */
         .left-side {
             width: 50%;
             display: flex;
@@ -84,7 +84,6 @@
             background: #070b16;
         }
 
-        /* Categories Column (45% of left side) */
         .categories-col {
             width: 45%;
             background: #090e1c;
@@ -111,7 +110,6 @@
             color: #5d7299;
         }
 
-        /* Channels Column (55% of left side) */
         .channels-col {
             width: 55%;
             background: #070b16;
@@ -139,21 +137,19 @@
             width: 28px;
         }
 
-        /* Right Side: ExoPlayer Placeholder + Info Bar (50% width) */
+        /* Right Side Layout */
         .right-side {
             width: 50%;
             display: flex;
             flex-direction: column;
         }
 
-        /* Transparent Top Area for Native Player overlay */
         .player-space {
             height: 62%;
             background: transparent;
             pointer-events: none;
         }
 
-        /* Bottom Info & Control Bar */
         .info-panel {
             height: 38%;
             background: #050811;
@@ -206,14 +202,9 @@
         <div class="search-box">
             <input type="text" placeholder="بحث...">
         </div>
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            color: #00d2ff;
-        }
+        <div class="logo">
+            <span>📺</span> REBAZ TV
+        </div>
     </div>
 
     <!-- Main Content Layout -->
@@ -237,7 +228,7 @@
             </div>
         </div>
 
-        <!-- Right Side: Video Player Overlay Space & Bottom Controls -->
+        <!-- Right Side -->
         <div class="right-side">
             <div class="player-space"></div>
             <div class="info-panel">
@@ -253,7 +244,6 @@
     <script>
         let isFull = false;
 
-        // کارپێکردنی ڕاستەوخۆی کەناڵەکە بۆ تێست
         window.onload = function() {
             setTimeout(() => {
                 playChannel('http://mhiptv.com:8080/live/hk030/6985423976/212760.ts', 'Alwan Sport 1 4K');
