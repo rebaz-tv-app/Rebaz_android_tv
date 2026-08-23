@@ -23,11 +23,17 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Install Gradle System-wide
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gradle
+
       - name: Build Native Android Project
         run: |
           mkdir -p android_project/app/src/main/java/com/rebazandroid/tv
           mkdir -p android_project/app/src/main/assets
           mkdir -p android_project/app/src/main/res/values
+          mkdir -p android_project/gradle/wrapper
 
           # Copy ALL user design files from repository directly into assets
           cp index.html android_project/app/src/main/assets/ 2>/dev/null || true
@@ -66,7 +72,7 @@ jobs:
           }
           EOF
 
-          # Create App build.gradle (No external dependencies needed)
+          # Create App build.gradle
           cat << 'EOF' > android_project/app/build.gradle
           plugins {
               id 'com.android.application'
@@ -80,8 +86,8 @@ jobs:
                   applicationId "com.rebazandroid.tv"
                   minSdk 21
                   targetSdk 34
-                  versionCode 18
-                  versionName "18.0"
+                  versionCode 19
+                  versionName "19.0"
               }
 
               compileOptions {
@@ -136,7 +142,7 @@ jobs:
           </manifest>
           EOF
 
-          # Create MainActivity.java with Native VideoView
+          # Create MainActivity.java
           cat << 'EOF' > android_project/app/src/main/java/com/rebazandroid/tv/MainActivity.java
           package com.rebazandroid.tv;
 
@@ -223,7 +229,7 @@ jobs:
                   btnLayout.setOrientation(LinearLayout.HORIZONTAL);
                   btnLayout.setGravity(Gravity.END);
                   LinearLayout.LayoutParams btnLayoutParams = new LinearLayout.LayoutParams(
-                          ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                      ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
                   btnLayoutParams.topMargin = 15;
                   btnLayout.setLayoutParams(btnLayoutParams);
 
@@ -239,7 +245,7 @@ jobs:
                   btnFull.setTextColor(Color.WHITE);
                   btnFull.setPadding(20, 10, 20, 10);
                   LinearLayout.LayoutParams fullParams = new LinearLayout.LayoutParams(
-                          ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                      ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
                   fullParams.rightMargin = 15;
                   btnFull.setLayoutParams(fullParams);
 
@@ -278,15 +284,6 @@ jobs:
                               }
                           }
                       });
-                  }
-              }
-
-              @Override
-              protected void onBackPressed() {
-                  if (webView != null && webView.canGoBack()) {
-                      webView.goBack();
-                  } else {
-                      super.onBackPressed();
                   }
               }
           }
