@@ -159,6 +159,7 @@
             height: 70%;
             background: transparent;
             position: relative;
+            cursor: pointer;
         }
 
         .channel-title-overlay {
@@ -212,11 +213,33 @@
             outline: none;
         }
 
-        .nav-item:focus, .search-box:focus, .cat-item:focus, .ch-item:focus, .btn:focus {
+        .nav-item:focus, .search-box:focus, .cat-item:focus, .ch-item:focus, .btn:focus, .video-container:focus {
             outline: 3px solid #f59e0b !important;
             background-color: #1e293b !important;
-            transform: scale(1.02);
+            transform: scale(1.01);
             transition: all 0.1s ease-in-out;
+        }
+
+        /* Fullscreen Layout Overrides */
+        body.fullscreen-active .header,
+        body.fullscreen-active .categories-pane,
+        body.fullscreen-active .channels-pane,
+        body.fullscreen-active .controls-pane {
+            display: none !important;
+        }
+
+        body.fullscreen-active .main-content {
+            height: 100vh !important;
+        }
+
+        body.fullscreen-active .player-pane {
+            width: 100vw !important;
+            height: 100vh !important;
+        }
+
+        body.fullscreen-active .video-container {
+            width: 100vw !important;
+            height: 100vh !important;
         }
     </style>
 </head>
@@ -243,7 +266,7 @@
         <div class="channels-pane" id="chPane"></div>
 
         <div class="player-pane">
-            <div class="video-container">
+            <div class="video-container" id="videoContainer" tabindex="0" onclick="toggleFullScreen()">
                 <div class="live-badge">LIVE</div>
                 <div class="channel-title-overlay" id="currentChTitle">4K | Alwan Sport 1</div>
             </div>
@@ -252,7 +275,7 @@
                 <div></div>
                 <div class="action-buttons">
                     <button class="btn" tabindex="0" onclick="reloadStream()">تحديث البث</button>
-                    <button class="btn" tabindex="0">اضافة الى المفضلة</button>
+                    <button class="btn" tabindex="0" onclick="toggleFullScreen()">ملء الشاشة</button>
                     <button class="btn" tabindex="0">بحث</button>
                 </div>
             </div>
@@ -275,6 +298,25 @@
 
         let currentUrl = "";
         let currentName = "";
+        let isFullScreen = false;
+
+        function toggleFullScreen() {
+            isFullScreen = !isFullScreen;
+            if (isFullScreen) {
+                document.body.classList.add('fullscreen-active');
+            } else {
+                document.body.classList.remove('fullscreen-active');
+            }
+
+            if (window.Android && window.Android.toggleFullScreen) {
+                window.Android.toggleFullScreen(isFullScreen);
+            }
+        }
+
+        function exitFullScreenJS() {
+            isFullScreen = false;
+            document.body.classList.remove('fullscreen-active');
+        }
 
         function loadChannels(catIndex) {
             const chPane = document.getElementById('chPane');
@@ -311,7 +353,6 @@
             }
             document.getElementById('currentChTitle').innerText = name;
 
-            // Send stream URL directly to ExoPlayer native player
             if (window.Android && window.Android.playStream) {
                 window.Android.playStream(url);
             }
