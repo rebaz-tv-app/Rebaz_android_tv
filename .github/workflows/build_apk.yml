@@ -80,8 +80,8 @@ jobs:
                   applicationId "com.rebazandroid.tv"
                   minSdk 21
                   targetSdk 34
-                  versionCode 9
-                  versionName "9.0"
+                  versionCode 10
+                  versionName "10.0"
               }
 
               compileOptions {
@@ -184,7 +184,6 @@ jobs:
                   FrameLayout rootLayout = new FrameLayout(this);
                   rootLayout.setBackgroundColor(Color.parseColor("#050811"));
 
-                  // Configure OkHttp client with User-Agent to bypass IPTV blocking
                   OkHttpClient okHttpClient = new OkHttpClient.Builder()
                           .retryOnConnectionFailure(true)
                           .build();
@@ -214,7 +213,6 @@ jobs:
                   int initialW = (int) (screenWidth * 0.50);
                   int initialH = (int) (availableHeight * 0.62);
 
-                  // Setup WebView first so it sits behind or properly alongside, but let's make sure player view is correctly added
                   webView = new WebView(this);
                   webView.setBackgroundColor(Color.TRANSPARENT);
                   webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
@@ -236,12 +234,10 @@ jobs:
                       @Override
                       public void onPageFinished(WebView view, String url) {
                           super.onPageFinished(view, url);
-                          // Ensure webview background is transparent so player shows through underneath
                           webView.setBackgroundColor(Color.TRANSPARENT);
                       }
                   });
 
-                  // Add WebView first, then PlayerView on top of the player-space area
                   rootLayout.addView(webView);
 
                   FrameLayout.LayoutParams playerParams = new FrameLayout.LayoutParams(initialW, initialH);
@@ -288,7 +284,7 @@ jobs:
 
               private void applyFullScreenState(final boolean full) {
                   new Handler(Looper.getMainLooper()).post(new Runnable() {
-                      @Runnable
+                      @Override
                       public void run() {
                           isFullScreen = full;
                           if (isFullScreen) {
