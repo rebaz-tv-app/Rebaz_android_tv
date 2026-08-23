@@ -80,8 +80,8 @@ jobs:
                   applicationId "com.rebazandroid.tv"
                   minSdk 21
                   targetSdk 34
-                  versionCode 10
-                  versionName "10.0"
+                  versionCode 11
+                  versionName "11.0"
               }
 
               compileOptions {
@@ -240,10 +240,11 @@ jobs:
 
                   rootLayout.addView(webView);
 
+                  // Fixed alignment to LEFT because in RTL layout the player space is on the left side
                   FrameLayout.LayoutParams playerParams = new FrameLayout.LayoutParams(initialW, initialH);
-                  playerParams.gravity = Gravity.TOP | Gravity.RIGHT;
+                  playerParams.gravity = Gravity.TOP | Gravity.LEFT;
                   playerParams.topMargin = headerHeight;
-                  playerParams.rightMargin = 0;
+                  playerParams.leftMargin = 0;
                   playerView.setLayoutParams(playerParams);
                   playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FILL);
                   
@@ -286,7 +287,7 @@ jobs:
                   new Handler(Looper.getMainLooper()).post(new Runnable() {
                       @Override
                       public void run() {
-                          isFullScreen = full;
+                        isFullScreen = full;
                           if (isFullScreen) {
                               playerView.bringToFront();
                               FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
@@ -307,9 +308,9 @@ jobs:
                               int pHeight = (int) (availableHeight * 0.62);
 
                               FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(pWidth, pHeight);
-                              params.gravity = Gravity.TOP | Gravity.RIGHT;
+                              params.gravity = Gravity.TOP | Gravity.LEFT;
                               params.topMargin = headerHeight;
-                              params.rightMargin = 0;
+                              params.leftMargin = 0;
                               playerView.setLayoutParams(params);
                               playerView.bringToFront();
                           }
