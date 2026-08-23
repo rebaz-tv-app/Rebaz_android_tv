@@ -146,8 +146,13 @@
 
         .player-space {
             height: 62%;
-            background: transparent;
-            pointer-events: none;
+            background: #000;
+            position: relative;
+        }
+        .player-space video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
 
         .info-panel {
@@ -221,7 +226,7 @@
 
             <!-- Channels List -->
             <div class="channels-col">
-                <div class="ch-item active" tabindex="0" onclick="playChannel('http://line.8kultradnscloud.ru:80/24nn6nw3tx/me6z58cu5m/1859098', 'Alwan Sport 1 4K')">
+                <div class="ch-item active" tabindex="0" onclick="playChannel('http://mhiptv.com:8080/live/hk030/6985423976/212760.ts', 'Alwan Sport 1 4K')">
                     <span class="ch-num">1</span>
                     <span>Alwan Sport 1 4K</span>
                 </div>
@@ -230,7 +235,9 @@
 
         <!-- Right Side -->
         <div class="right-side">
-            <div class="player-space"></div>
+            <div class="player-space">
+                <video id="mainPlayer" autoplay controls></video>
+            </div>
             <div class="info-panel">
                 <div class="ch-title" id="selected-ch">Alwan Sport 1 4K</div>
                 <div class="action-btns">
@@ -252,6 +259,16 @@
 
         function playChannel(url, title) {
             document.getElementById('selected-ch').innerText = title;
+            
+            let player = document.getElementById('mainPlayer');
+            if (player) {
+                player.src = url;
+                player.play().catch(function(e) {
+                    console.log("Auto-play blocked or error:", e);
+                });
+            }
+
+            // ناردنی لینکەکە بۆ ئەپی نەتیڤ ئەگەر پێویست بکات
             if (window.Android && typeof window.Android.playStream === 'function') {
                 window.Android.playStream(url);
             }
@@ -259,13 +276,17 @@
 
         function toggleFull() {
             isFull = !isFull;
+            let player = document.getElementById('mainPlayer');
+            if (player) {
+                if (isFull) {
+                    if (player.requestFullscreen) player.requestFullscreen();
+                } else {
+                    if (document.exitFullscreen) document.exitFullscreen();
+                }
+            }
             if (window.Android && typeof window.Android.toggleFullScreen === 'function') {
                 window.Android.toggleFullScreen(isFull);
             }
-        }
-
-        function exitFullScreenJS() {
-            isFull = false;
         }
     </script>
 </body>
