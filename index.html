@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>REBAZ TV</title>
+    <!-- Ziyad kani Hls.js bo lēdani stream-akan -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
         body {
@@ -236,7 +238,7 @@
         <!-- Right Side -->
         <div class="right-side">
             <div class="player-space">
-                <video id="mainPlayer" autoplay controls></video>
+                <video id="mainPlayer" autoplay controls playsinline></video>
             </div>
             <div class="info-panel">
                 <div class="ch-title" id="selected-ch">Alwan Sport 1 4K</div>
@@ -250,42 +252,51 @@
 
     <script>
         let isFull = false;
+        let hlsPlayer = null;
 
         window.onload = function() {
             setTimeout(() => {
                 playChannel('http://mhiptv.com:8080/live/hk030/6985423976/212760.ts', 'Alwan Sport 1 4K');
-            }, 1000);
+            }, 500);
         };
 
         function playChannel(url, title) {
             document.getElementById('selected-ch').innerText = title;
-            
-            let player = document.getElementById('mainPlayer');
-            if (player) {
-                player.src = url;
-                player.play().catch(function(e) {
-                    console.log("Auto-play blocked or error:", e);
-                });
+            let video = document.getElementById('mainPlayer');
+
+            if (hlsPlayer) {
+                hlsPlayer.destroy();
             }
 
-            // ناردنی لینکەکە بۆ ئەپی نەتیڤ ئەگەر پێویست بکات
-            if (window.Android && typeof window.Android.playStream === 'function') {
-                window.Android.playStream(url);
+            if (Hls.isSupported()) {
+                hlsPlayer = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: true
+                });
+                hlsPlayer.loadSource(url);
+                hlsPlayer.attachMedia(video);
+                hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play().catch(e => console.log("Auto-play prevented:", e));
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+                video.play().catch(e => console.log("Auto-play prevented:", e));
+            } else {
+                video.src = url;
+                video.play().catch(e => console.log("Auto-play prevented:", e));
             }
         }
 
         function toggleFull() {
-            isFull = !isFull;
             let player = document.getElementById('mainPlayer');
             if (player) {
-                if (isFull) {
+                if (!document.fullscreenElement) {
                     if (player.requestFullscreen) player.requestFullscreen();
+                    else if (player.webkitRequestFullscreen) player.webkitRequestFullscreen();
                 } else {
                     if (document.exitFullscreen) document.exitFullscreen();
+                    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
                 }
-            }
-            if (window.Android && typeof window.Android.toggleFullScreen === 'function') {
-                window.Android.toggleFullScreen(isFull);
             }
         }
     </script>
