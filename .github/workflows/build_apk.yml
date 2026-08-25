@@ -25,7 +25,7 @@ jobs:
     - name: Setup Android Premium UI Project
       run: |
         mkdir -p app/src/main/assets
-        mkdir -p app/src/main/java/com/kurdtv/vip
+        mkdir -p app/src/main/java/com/rebaz/tv
         mkdir -p app/src/main/res/values
         mkdir -p app/src/main/res/layout
         mkdir -p app/src/main/res/drawable
@@ -63,7 +63,7 @@ jobs:
         cat << 'EOF' > app/build.gradle
         plugins { id 'com.android.application' }
         android {
-            namespace 'com.kurdtv.vip'
+            namespace 'com.rebaz.android.tv'
             compileSdk 34
             defaultConfig {
                 applicationId "com.rebaz.androidtv"
@@ -234,7 +234,7 @@ jobs:
         
         # 🟢 MainActivity: لادانا تەمام و فەرمی یا Wuffy Player دگەل هێلانا پشکنینا VPN و Sniffer
         cat << 'EOF' > app/src/main/java/com/rebaz/tv/MainActivity.java
-        package com.kurdtv.vip;
+        package com.rebaz.android.tv;
         import android.content.Intent;
         import android.content.pm.PackageManager;
         import android.content.pm.ActivityInfo;
