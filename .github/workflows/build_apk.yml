@@ -42,7 +42,7 @@ jobs:
         </vector>
         EOF
         
-        cp index.html app/src/main/assets/index.html || echo "<html><body><h1>Kurd TV VIP</h1></body></html>" > app/src/main/assets/index.html
+        cp index.html app/src/main/assets/index.html || echo "<html><body><h1>REBAZ TV</h1></body></html>" > app/src/main/assets/index.html
         
         if [ -f "logo.png" ]; then cp logo.png app/src/main/res/drawable/ic_launcher.png
         elif [ -f "logo.jpg" ]; then cp logo.jpg app/src/main/res/drawable/ic_launcher.png
@@ -66,7 +66,7 @@ jobs:
             namespace 'com.kurdtv.vip'
             compileSdk 34
             defaultConfig {
-                applicationId "com.kurdtv.vip"
+                applicationId "com.rebaz.androidtv"
                 minSdk 21
                 targetSdk 34
                 versionCode 1
@@ -220,7 +220,7 @@ jobs:
 
             <uses-feature android:name="android.software.leanback" android:required="false" />
             <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
-            <application android:allowBackup="true" android:label="Kurd TV VIP" android:icon="@drawable/ic_launcher" android:roundIcon="@drawable/ic_launcher" android:theme="@style/Theme.AppCompat.Light.NoActionBar" android:usesCleartextTraffic="true" android:hardwareAccelerated="true">
+            <application android:allowBackup="true" android:label="REBAZ TV" android:icon="@drawable/ic_launcher" android:roundIcon="@drawable/ic_launcher" android:theme="@style/Theme.AppCompat.Light.NoActionBar" android:usesCleartextTraffic="true" android:hardwareAccelerated="true">
                 <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden|layoutDirection">
                     <intent-filter>
                         <action android:name="android.intent.action.MAIN" />
@@ -233,7 +233,7 @@ jobs:
         EOF
         
         # 🟢 MainActivity: لادانا تەمام و فەرمی یا Wuffy Player دگەل هێلانا پشکنینا VPN و Sniffer
-        cat << 'EOF' > app/src/main/java/com/kurdtv/vip/MainActivity.java
+        cat << 'EOF' > app/src/main/java/com/rebaz/tv/MainActivity.java
         package com.kurdtv.vip;
         import android.content.Intent;
         import android.content.pm.PackageManager;
@@ -606,5 +606,5 @@ jobs:
     - name: Upload Finished ExoPlayer APK
       uses: actions/upload-artifact@v4
       with:
-        name: Rebaz-android-tv-APK
-        path: app/build/outputs/apk/debug/rebaz.androidtv.apk
+        name: rebaz-android-tv-APK
+        path: app/build/outputs/apk/debug/rebaz.android.tv.apk
