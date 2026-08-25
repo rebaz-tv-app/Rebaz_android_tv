@@ -601,10 +601,12 @@ jobs:
         chmod +x gradlew
 
     - name: Build Premium ExoPlayer APK
-      run: ./gradlew assembleDebug --stacktrace
+      run: |
+        ./gradlew assembleDebug --stacktrace
+        mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/rebaz-android-tv.apk
 
     - name: Upload Finished ExoPlayer APK
       uses: actions/upload-artifact@v4
       with:
         name: rebaz-android-tv-APK
-        path: app/build/outputs/apk/debug/rebaz.android.tv.apk
+        path: app/build/outputs/apk/debug/rebaz-android-tv.apk
