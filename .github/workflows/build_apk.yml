@@ -443,7 +443,7 @@ jobs:
                 });
                 
                 wv.setWebChromeClient(new WebChromeClient());
-                wv.loadUrl("https://mansorzebari86-jpg.github.io/kurdtv-app/");
+                wv.loadUrl("file:///android_asset/index.html");
             }
 
             // مەکینەیا پشکنینا گۆنجاو یا VPN و پڕۆکسی (تەنێ کاتەکێ هاتییە کارپێکردن)
