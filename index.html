@@ -735,41 +735,52 @@
                 }
             });
         }
-    </script>
-    <style>
-  /* 1. شاراوەکردنی بانەر و بەشە زێدەکان لە سەرەوە */
-  .banner-container, 
-  .search-container, 
-  .section-wrapper, 
-  #home-news, 
-  #home-sports {
-      display: none !important;
-  }
-
-  /* 2. شاراوەکردنی بەشەکانی "سەرەکی" و "کەناڵان" و هێشتنەوەی "TV Mode" و "ڕێکخستن" */
-  .bottom-nav-item:nth-child(3),
-  .bottom-nav-item:nth-child(4),
-  nav.fixed-bottom a:nth-child(3),
-  nav.fixed-bottom a:nth-child(4) {
-      display: none !important;
-  }
-
-  /* 3. ڕێکخستنی شوێنی دوو دوگمەکەی تر لە ناوەڕاست و بەشێوەیەکی ڕێک */
-  .bottom-nav, nav.fixed-bottom {
-      justify-content: space-around !important;
-  }
-</style>
-
 <script>
-  document.addEventListener("DOMContentLoaded", function() {
-      // چوونە ناو بەشی TV Mode بە ئۆتۆماتیکی لە کاتی کردنەوەی ئەپدا
-      setTimeout(function() {
-          const tvBtn = document.querySelector('[onclick*="Tv"], [onclick*="tv"], .tv-mode-btn');
-          if (tvBtn) {
-              tvBtn.click();
-          }
-      }, 300);
-  });
+  function customizeAppUI() {
+    // 1. شاردنەوەی سەرجەم بانەر و ناوەڕۆکە سەرەکییەکان
+    const hideSelectors = [
+      '.banner-container', 
+      '.search-container', 
+      '.section-wrapper', 
+      '#home-news', 
+      '#home-sports',
+      '.px-4'
+    ];
+    
+    hideSelectors.forEach(function(selector) {
+      document.querySelectorAll(selector).forEach(function(el) {
+        el.style.setProperty('display', 'none', 'important');
+      });
+    });
+
+    // 2. گەڕان بەدوای دەقی دوگمەکانی خوارەوە و شاردنەوەیان بەپێی ناو
+    const navItems = document.querySelectorAll('a, button, div, span, p');
+    navItems.forEach(function(el) {
+      if (el.children.length === 0) { // تەنیا تێکستەکان
+        const txt = el.innerText ? el.innerText.trim() : '';
+        
+        // شاردنەوەی "سەرەکی" و "کەناڵان"
+        if (txt === 'سەرەکی' || txt === 'کەناڵان') {
+          const parentBtn = el.closest('a, button, div.bottom-nav-item, div[class*="nav"]') || el;
+          parentBtn.style.setProperty('display', 'none', 'important');
+        }
+      }
+    });
+
+    // 3. کلیک کردنی ئۆتۆماتیکی لەسەر TV Mode لە کاتی کردنەوەی ئەپدا
+    navItems.forEach(function(el) {
+      const txt = el.innerText ? el.innerText.trim() : '';
+      if (txt.includes('TV Mode') || txt.includes('TV mode')) {
+        el.click();
+      }
+    });
+  }
+
+  // ئەنجامدانی سڕینەوەکە دەستبەجێ و دوای لۆدبوونی تەواوی پەیجەکە
+  document.addEventListener("DOMContentLoaded", customizeAppUI);
+  window.addEventListener("load", customizeAppUI);
+  setTimeout(customizeAppUI, 500);
+  setTimeout(customizeAppUI, 1200);
 </script>
 
 </body>
