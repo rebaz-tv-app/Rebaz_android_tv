@@ -736,5 +736,41 @@
             });
         }
     </script>
+    <style>
+  /* 1. شاراوەکردنی بانەر و بەشە زێدەکان لە سەرەوە */
+  .banner-container, 
+  .search-container, 
+  .section-wrapper, 
+  #home-news, 
+  #home-sports {
+      display: none !important;
+  }
+
+  /* 2. شاراوەکردنی بەشەکانی "سەرەکی" و "کەناڵان" و هێشتنەوەی "TV Mode" و "ڕێکخستن" */
+  .bottom-nav-item:nth-child(3),
+  .bottom-nav-item:nth-child(4),
+  nav.fixed-bottom a:nth-child(3),
+  nav.fixed-bottom a:nth-child(4) {
+      display: none !important;
+  }
+
+  /* 3. ڕێکخستنی شوێنی دوو دوگمەکەی تر لە ناوەڕاست و بەشێوەیەکی ڕێک */
+  .bottom-nav, nav.fixed-bottom {
+      justify-content: space-around !important;
+  }
+</style>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+      // چوونە ناو بەشی TV Mode بە ئۆتۆماتیکی لە کاتی کردنەوەی ئەپدا
+      setTimeout(function() {
+          const tvBtn = document.querySelector('[onclick*="Tv"], [onclick*="tv"], .tv-mode-btn');
+          if (tvBtn) {
+              tvBtn.click();
+          }
+      }, 300);
+  });
+</script>
+
 </body>
                     </html>
