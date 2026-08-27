@@ -736,52 +736,42 @@
             });
         }
 <script>
-  function customizeAppUI() {
-    // 1. شاردنەوەی سەرجەم بانەر و ناوەڕۆکە سەرەکییەکان
-    const hideSelectors = [
-      '.banner-container', 
-      '.search-container', 
-      '.section-wrapper', 
-      '#home-news', 
-      '#home-sports',
-      '.px-4'
-    ];
-    
-    hideSelectors.forEach(function(selector) {
-      document.querySelectorAll(selector).forEach(function(el) {
-        el.style.setProperty('display', 'none', 'important');
-      });
-    });
+  (function() {
+    // 1. فەنکشنی پشکنینی ئەوەی ئایا ئامێرەکە TVیە یان مۆبایل
+    function isTvDevice() {
+      const userAgent = navigator.userAgent || '';
+      
+      // دیاریکردنی جۆرەکانی Android TV, TV Box, Leanback, FireTV, SmartTV
+      const tvKeywords = /TV|SmartTV|AndroidTV|Leanback|LargeScreen|BRAVIA|MiTV|FireTV|AppleTV|AFTB|Tizen|WebOS/i;
+      
+      // هەروەها پشکنین بۆ بوونی ڕیمۆت کۆنترۆڵ یان شاشەی پان (Landscape)
+      const isLandscapeTv = window.innerWidth > window.innerHeight && (window.innerWidth >= 960);
 
-    // 2. گەڕان بەدوای دەقی دوگمەکانی خوارەوە و شاردنەوەیان بەپێی ناو
-    const navItems = document.querySelectorAll('a, button, div, span, p');
-    navItems.forEach(function(el) {
-      if (el.children.length === 0) { // تەنیا تێکستەکان
-        const txt = el.innerText ? el.innerText.trim() : '';
+      return tvKeywords.test(userAgent) || isLandscapeTv;
+    }
+
+    // 2. کاتێک ئەپەکە لۆد دەبێت، ئەگەر TV بوو ڕاستەوخۆ دەچێتە سەر TV Mode
+    window.addEventListener("load", function() {
+      if (isTvDevice()) {
+        console.log("ئامێرەکە TVیە - چوونە ناو TV Mode...");
         
-        // شاردنەوەی "سەرەکی" و "کەناڵان"
-        if (txt === 'سەرەکی' || txt === 'کەناڵان') {
-          const parentBtn = el.closest('a, button, div.bottom-nav-item, div[class*="nav"]') || el;
-          parentBtn.style.setProperty('display', 'none', 'important');
-        }
+        setTimeout(function() {
+          // گەڕان بەدوای دوگمەی TV Mode لە ناو ئەپەکەدا و کلیک کردنی ئۆتۆماتیکی
+          const tvBtn = document.querySelector('[onclick*="Tv"], [onclick*="tv"], .tv-mode-btn, #tv-mode-btn');
+          
+          if (tvBtn) {
+            tvBtn.click();
+          } else if (typeof openTvMode === 'function') {
+            openTvMode();
+          } else if (typeof enableTvMode === 'function') {
+            enableTvMode();
+          }
+        }, 400); // 0.4 چرکە دوای لۆدبوون
       }
     });
-
-    // 3. کلیک کردنی ئۆتۆماتیکی لەسەر TV Mode لە کاتی کردنەوەی ئەپدا
-    navItems.forEach(function(el) {
-      const txt = el.innerText ? el.innerText.trim() : '';
-      if (txt.includes('TV Mode') || txt.includes('TV mode')) {
-        el.click();
-      }
-    });
-  }
-
-  // ئەنجامدانی سڕینەوەکە دەستبەجێ و دوای لۆدبوونی تەواوی پەیجەکە
-  document.addEventListener("DOMContentLoaded", customizeAppUI);
-  window.addEventListener("load", customizeAppUI);
-  setTimeout(customizeAppUI, 500);
-  setTimeout(customizeAppUI, 1200);
+  })();
 </script>
+
 
 </body>
                     </html>
