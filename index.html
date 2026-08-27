@@ -496,22 +496,22 @@
             { name: "Kurdana TV", type: "music", logo: "https://i.ibb.co/dwkMBdWf/images-4.png", stream: "http://max4kcdn.com:8080/live/5161699711/3840575058/147422.m3u8" }
         ];
 
+        const ACTIVATION_STORAGE_KEY = 'rebaztv_activated';
+
         document.addEventListener("DOMContentLoaded", () => {
             renderDashboard();
             renderAllChannelsPage();
             setupTvInteraction();
-            
-            // 🟢 پشکنینا ب دروستی یا ئەکتیڤکرنێ ل دەستپێکێ ب پاراستنا try-catch
+            checkActivationStatus();
+            checkAndAutoLaunchTvMode();
+        });
+
+        function checkActivationStatus() {
             let isActivated = 'false';
             try {
-                isActivated = localStorage.getItem('kurdTvVIP_activated');
+                isActivated = localStorage.getItem(ACTIVATION_STORAGE_KEY) || sessionStorage.getItem(ACTIVATION_STORAGE_KEY) || 'false';
             } catch (e) {
-                console.warn("LocalStorage is blocked, using session fallback.");
-                try {
-                    isActivated = sessionStorage.getItem('kurdTvVIP_activated') || 'false';
-                } catch (ex) {
-                    isActivated = 'false';
-                }
+                isActivated = 'false';
             }
 
             const modal = document.getElementById('activationModal');
@@ -520,7 +520,7 @@
             } else {
                 modal.style.setProperty('display', 'flex', 'important');
             }
-        });
+        }
 
         function triggerNotification(msg) {
             const container = document.getElementById('customAlert');
@@ -530,7 +530,7 @@
             setTimeout(() => { container.style.opacity = '0'; }, 3000);
         }
 
-        // 🟢 فرمانا پشکنینا کۆدێ چالاککرنێ یا Akam TV ب پاراستنا try-catch
+        // 🟢 فرمانا پشکنینا کۆدێ چالاککرنێ
         function verifyActivationCode() {
             const codeInput = document.getElementById('activationCodeInput');
             const codeValue = codeInput.value.trim();
@@ -538,13 +538,13 @@
 
             if (codeValue === 'rebaz.tv') {
                 try {
-                    localStorage.setItem('rebaztv_activated', 'true');
+                    localStorage.setItem(ACTIVATION_STORAGE_KEY, 'true');
                 } catch (e) {
                     try {
-                        sessionStorage.setItem('rebaztv_activated', 'true');
+                        sessionStorage.setItem(ACTIVATION_STORAGE_KEY, 'true');
                     } catch (ex) {}
                 }
-                triggerNotification("بەرنامەکە بە سەرکەوتوی چلاک بوو!");
+                triggerNotification("بەرنامەکە بە سەرکەوتوویی چالاک بوو!");
                 setTimeout(() => {
                     modal.style.setProperty('display', 'none', 'important');
                 }, 1500);
@@ -626,7 +626,7 @@
                 document.getElementById('tvModePage').style.display = 'block';
                 const tvVideo = document.getElementById('tvVideoPlayer');
                 tvVideo.src = streamUrl;
-                tvVideo.play();
+                tvVideo.play().catch(()=>{});
             }
         }
 
@@ -683,7 +683,7 @@
             listContainer.innerHTML = content;
             
             const firstChannel = listContainer.querySelector('.tv-channel-item');
-            if(firstChannel) {
+            if(firstChannel && filtered.length > 0) {
                 firstChannel.focus();
                 playTvChannel(filtered[0].stream, firstChannel);
             }
@@ -735,88 +735,19 @@
                 }
             });
         }
-<script>
-  (function() {
-    // 1. فەنکشنی پشکنینی ئەوەی ئایا ئامێرەکە TVیە یان مۆبایل
-    function isTvDevice() {
-      const userAgent = navigator.userAgent || '';
-      
-      // دیاریکردنی جۆرەکانی Android TV, TV Box, Leanback, FireTV, SmartTV
-      const tvKeywords = /TV|SmartTV|AndroidTV|Leanback|LargeScreen|BRAVIA|MiTV|FireTV|AppleTV|AFTB|Tizen|WebOS/i;
-      
-      // هەروەها پشکنین بۆ بوونی ڕیمۆت کۆنترۆڵ یان شاشەی پان (Landscape)
-      const isLandscapeTv = window.innerWidth > window.innerHeight && (window.innerWidth >= 960);
 
-      return tvKeywords.test(userAgent) || isLandscapeTv;
-    }
+        // 🟢 فەنکشنی پشکنینی ئامێرەکانی TV بۆ چوونە ژوورەوەی ئۆتۆماتیکی
+        function checkAndAutoLaunchTvMode() {
+            const userAgent = navigator.userAgent || '';
+            const tvKeywords = /TV|SmartTV|AndroidTV|Leanback|LargeScreen|BRAVIA|MiTV|FireTV|AppleTV|AFTB|Tizen|WebOS/i;
+            const isLandscapeTv = window.innerWidth > window.innerHeight && (window.innerWidth >= 960);
 
-    // 2. کاتێک ئەپەکە لۆد دەبێت، ئەگەر TV بوو ڕاستەوخۆ دەچێتە سەر TV Mode
-    window.addEventListener("load", function() {
-      if (isTvDevice()) {
-        console.log("ئامێرەکە TVیە - چوونە ناو TV Mode...");
-        
-        setTimeout(function() {
-          // گەڕان بەدوای دوگمەی TV Mode لە ناو ئەپەکەدا و کلیک کردنی ئۆتۆماتیکی
-          const tvBtn = document.querySelector('[onclick*="Tv"], [onclick*="tv"], .tv-mode-btn, #tv-mode-btn');
-          
-          if (tvBtn) {
-            tvBtn.click();
-          } else if (typeof openTvMode === 'function') {
-            openTvMode();
-          } else if (typeof enableTvMode === 'function') {
-            enableTvMode();
-          }
-        }, 400); // 0.4 چرکە دوای لۆدبوون
-      }
-    });
-  })();
-</script>
-
-<script>
-  (function autoLaunchTvMode() {
-    let checkCount = 0;
-    
-    const tvInterval = setInterval(function() {
-      checkCount++;
-
-      // 1. گەڕان بەدوای دوگمەی TV Mode لە ڕووی دەقەکەیەوە
-      const allElements = document.querySelectorAll('a, button, div, span, li');
-      let foundBtn = null;
-
-      allElements.forEach(function(el) {
-        if (el.children.length === 0 && el.innerText) {
-          const txt = el.innerText.trim();
-          if (txt === 'TV Mode' || txt === 'TV mode') {
-            foundBtn = el;
-          }
+            if (tvKeywords.test(userAgent) || isLandscapeTv) {
+                setTimeout(() => {
+                    openTvMode();
+                }, 400);
+            }
         }
-      });
-
-      // 2. ئەگەر دوگمەکە دۆزرایەوە کلیکی لێبکە
-      if (foundBtn) {
-        foundBtn.click();
-        const parentClickable = foundBtn.closest('a, button, [onclick], .bottom-nav-item');
-        if (parentClickable) parentClickable.click();
-        
-        clearInterval(tvInterval); // کۆتایی هێنان بە گەڕان دوای کلیک کردن
-      }
-
-      // 3. ئەگەر بە فەنکشنی ناوخۆیی دروستکرابێت
-      if (typeof openTvMode === 'function') {
-        openTvMode();
-        clearInterval(tvInterval);
-      } else if (typeof enableTvMode === 'function') {
-        enableTvMode();
-        clearInterval(tvInterval);
-      }
-
-      // دوای ١٥ چرکە گەڕان ڕادەگرێت ئەگەر پەڕەکە نەکرا بێتەوە
-      if (checkCount > 50) {
-        clearInterval(tvInterval);
-      }
-    }, 300);
-  })();
-</script>
-
+    </script>
 </body>
-                    </html>
+</html>
