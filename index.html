@@ -772,6 +772,51 @@
   })();
 </script>
 
+<script>
+  (function autoLaunchTvMode() {
+    let checkCount = 0;
+    
+    const tvInterval = setInterval(function() {
+      checkCount++;
+
+      // 1. گەڕان بەدوای دوگمەی TV Mode لە ڕووی دەقەکەیەوە
+      const allElements = document.querySelectorAll('a, button, div, span, li');
+      let foundBtn = null;
+
+      allElements.forEach(function(el) {
+        if (el.children.length === 0 && el.innerText) {
+          const txt = el.innerText.trim();
+          if (txt === 'TV Mode' || txt === 'TV mode') {
+            foundBtn = el;
+          }
+        }
+      });
+
+      // 2. ئەگەر دوگمەکە دۆزرایەوە کلیکی لێبکە
+      if (foundBtn) {
+        foundBtn.click();
+        const parentClickable = foundBtn.closest('a, button, [onclick], .bottom-nav-item');
+        if (parentClickable) parentClickable.click();
+        
+        clearInterval(tvInterval); // کۆتایی هێنان بە گەڕان دوای کلیک کردن
+      }
+
+      // 3. ئەگەر بە فەنکشنی ناوخۆیی دروستکرابێت
+      if (typeof openTvMode === 'function') {
+        openTvMode();
+        clearInterval(tvInterval);
+      } else if (typeof enableTvMode === 'function') {
+        enableTvMode();
+        clearInterval(tvInterval);
+      }
+
+      // دوای ١٥ چرکە گەڕان ڕادەگرێت ئەگەر پەڕەکە نەکرا بێتەوە
+      if (checkCount > 50) {
+        clearInterval(tvInterval);
+      }
+    }, 300);
+  })();
+</script>
 
 </body>
                     </html>
